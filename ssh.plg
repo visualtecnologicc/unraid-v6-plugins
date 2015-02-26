@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name       "ssh">
 <!ENTITY author     "overbyrn">
-<!ENTITY version    "2014.09.09">
+<!ENTITY version    "2015.02.26">
 <!ENTITY category   "Network Services">
 <!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
 <!ENTITY packageURL "https://github.com/overbyrn/unraid-v6-plugins/releases/download/&name;">
@@ -150,16 +150,11 @@ This plugin extends upon the core SSH functionality built into unRAID 6
 
 <FILE Name="/usr/local/emhttp/plugins/&name;/&name;.page">
 <INLINE>
+<![CDATA[
 Menu="NetworkServices"
 Title="SSH"
-Icon="&name;.png"
+Icon="ssh.png"
 ---
-</INLINE>
-</FILE>
-
-<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.php">
-<INLINE>
-<![CDATA[
 <?PHP
 $ssh_cfg = parse_ini_file( "/boot/config/plugins/ssh/ssh.cfg");
 $ssh_running = file_exists( "/var/run/sshd.pid") ? "yes" : "no";
