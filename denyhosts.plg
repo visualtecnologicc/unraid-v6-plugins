@@ -151,7 +151,7 @@ iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29m
 </INLINE>
 </FILE>
 
-<FILE Name="/usr/local/emhttp/plugins/&name;/&name;/README.md">
+<FILE Name="/usr/local/emhttp/plugins/&name;/README.md">
 <INLINE>
 **&name; Plugin**
 
