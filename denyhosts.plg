@@ -1,0 +1,828 @@
+<?xml version='1.0' standalone='yes'?>
+
+<!DOCTYPE PLUGIN [
+<!ENTITY name       "denyhosts">
+<!ENTITY author     "overbyrn">
+<!ENTITY version    "2015.02.26">
+<!ENTITY category   "Network Services">
+<!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
+<!ENTITY packageURL "https://github.com/overbyrn/unraid-v6-plugins/releases/download/&name;">
+<!ENTITY devplugin  "false">
+]>
+
+<PLUGIN  name="&name;"
+         author="&author;"
+         version="&version;"
+         category="&category;"
+         pluginURL="&pluginURL;">
+
+<!--
+Copyright 2015, Rich Manton (overbyrn)
+
+The plugin installs DenyHosts, a log-based intrusion prevention security tool for SSH
+
+Plugin file locations:
+ /boot/plugins/denyhosts.plg                                            # this file
+ 
+ /boot/config/plugins/denyhosts/DenyHosts-2.6.tar.gz                    # denyhosts source
+ 
+ /boot/config/plugins/denyhosts/denyhosts.cfg                           # non-volatile configuration
+
+ /etc/rc.d/rc.denyhosts                                                 # plugin control script
+
+ /usr/local/emhttp/plugins/denyhosts/denyhosts.page                     # page file for webGui menu system
+ /usr/local/emhttp/plugins/denyhosts/denyhostsctl.php                   # webGui back-end control 
+ /usr/local/emhttp/plugins/denyhosts/denyhosts.png                      # plugin icon file
+ /usr/local/emhttp/plugins/denyhosts/device_status.png                  # plugin webgui image file
+ /usr/local/emhttp/plugins/denyhosts/new_config.png                     # plugin webgui image file
+ /usr/local/emhttp/plugins/denyhosts/information.png                    # plugin webgui image file
+
+ /var/run/denyhosts/denyhosts.pid                                       # run-time pid file
+
+ /usr/bin/denyhosts.py                                                  # denyhosts python application
+ /usr/local/denyhosts                                                   # denyhosts configuration directory
+ /usr/local/denyhosts/data                                              # denyhosts work directory (default. should be relocated to non-volatile storage via webgui)
+ 
+-->
+
+<FILE Name="/boot/config/plugins/&name;/DenyHosts-2.6.tar.gz">
+<URL>&packageURL;/DenyHosts-2.6.tar.gz</URL>
+</FILE>
+
+<FILE Name="/boot/config/plugins/&name;/&name;.cfg">
+<INLINE>
+# denyhosts configuration
+SERVICE=disable
+WORK_DIR=/usr/local/denyhosts
+PURGE_DENY=2w
+DENY_THRESHOLD_INVALID=5
+DENY_THRESHOLD_VALID=10
+DENY_THRESHOLD_ROOT=1
+DENY_THRESHOLD_RESTRICTED=1
+SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS=YES
+HOSTNAME_LOOKUP=NO
+AGE_RESET_VALID=5d
+AGE_RESET_ROOT=25d
+AGE_RESET_RESTRICTED=25d
+AGE_RESET_INVALID=10d
+DAEMON_SLEEP=30s
+DAEMON_PURGE=12h
+SECURE_LOG=/var/log/syslog
+HOSTS_DENY=/etc/hosts.deny
+BLOCK_SERVICE=sshd
+LOCK_FILE=/var/run/denyhosts/denyhosts.pid
+DAEMON_LOG=/var/run/denyhosts/denyhosts.out
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="install">
+<INLINE>
+if [ -d /usr/local/emhttp/plugins/&name; ]; then
+  rm -r /usr/local/emhttp/plugins/&name;
+fi;
+if [ -f /etc/rc.d/rc.&name; ]; then
+  rm -f /etc/rc.d/rc.&name;
+fi;
+
+# create denyhosts writable directory for pid file
+if [ ! -e /var/run/&name; ]; then
+  mkdir -m 0777 /var/run/&name;
+  chown nobody:users /var/run/&name;
+fi
+
+# create denyhosts application directory
+mkdir -p /usr/local/&name;
+
+# set permissions on application directory
+chown -R root:users /usr/local/&name;
+chmod -R go-rwx,u-x,g+u,ug+X /usr/local/&name;
+  
+#untar denyhosts file to tmp directory
+tar -zxvf /boot/config/plugins/&name;/DenyHosts-2.6.tar.gz -C /tmp
+
+#patch setup.py to correct directory
+sed -i -e '/^libpath = /c\\libpath = \"/usr/local/&name;\"' /tmp/DenyHosts-2.6/setup.py
+
+#install denyhosts
+cd /tmp/DenyHosts-2.6
+/usr/bin/env python setup.py install
+
+#clean-up tmp
+rm -rf /tmp/DenyHosts-2.6
+
+</INLINE>
+</FILE>
+
+<!--
+The 'remove' script.
+-->
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+rm -r /usr/local/emhttp/plugins/&name;
+rm -f /etc/rc.d/rc.&name;
+rm -rf /boot/config/plugins/&name;
+rm -rf /usr/local/&name;
+rm -f  /usr/bin/&name;.py
+rm -rf /var/run/&name;
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.png" Type="base64">
+<INLINE>
+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"
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/device_status.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFJSURBVDiNtZI9awJBEIafVctUSv6KvUUCEpPiDhsFsT2CVcSt5OqzlWBvKzb5QDCCvX8lYL2zsm4alTtRMYRM987OPLzzssp7z1+qcKo5m81u8/n8s1KqDuC9nzjnXqvV6vdVAOecds69pFoxcAN0TwKm0+kSWG+326Rer69EpA2glLrbOfgC2kB3MpmUc7mcBophGFZyACKiRYTNZqN3uiQiBEGwCIJgISKISAnAWquNMYiIPjhoNBorINzbMsZkbKZ1s9kM028FgNFo9AE8AJ9RFNVEJANI6+PZAkAURbVzC8f6eLYAMBgMyt57DRS11pVLgCRJlsBaKZX0er3VIURrLcaYfYiZpbQ2xmhrbTbEfr+fCeaSgziOM4Grf/nKnU7nJHU4HKqrACIy997fp3tKqfmp2bMntFqtN+BxJ9/H4/HTrwDX1g/Ee8aNyc3z/wAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/new_config.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAHcSURBVDiNpdKxa5NhEAbwX4uDUEFEpzo6FNShIohD0SVQwQyVDEJ0MEMxoNiohYIFhUqQYizRLNEPWxyMoGaRKiLBRUUd/AMqOAhVBF1Epd/hUId+FZF0EA9eXu7uuXuf97nrWV5e9j+2bq1Ep9PpQz8+5XK5b51OZwiXcC+Xy11bxfV0YzA/P38Cl/E1u6/jDb5jfz6f/9GVQbvdTrAXO1HD+UKhsNRut3MYwMlCofAjw1ZR+82g1WptwnNsx91isXh4tXGr1dqKRTzDKYzgAnb1zM7O9uIIzmAQd3EII6VS6RHMzc314T02/0H4YqlUOr8uIrbiCrbgeLlcvtFsNs/hfrPZfImx7Fub8Rp3sFAulx//FrFerw8iwb5KpbJUr9fXYyl76QOGMuozlUpl8U/duk4BpqenZ3A6cxcwNDEx8eVvXG/XakTE2Yi4HREiYiAiHk5NTfX9jevKYHJysh83cQy3MJylniBfrVZ/rtlgfHx8g5VxDeKVlZE9wJ4M0sLRWq22TJdVjohmVgy7sREHrezIAIr4jEpXDdI03ZGmqexcbTQabxuNxpc0TYfTNP2YxcdGR0e3dW0QEcci4kVEPI2IqdV4kiTvI+JARCxGxIUkSd6tKeK/2C+l7dZWE4J7LwAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/information.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAKcSURBVDjLpZPLa9RXHMU/d0ysZEwmMQqZiTaP0agoaKGJUiwIxU0hUjtUQaIuXHSVbRVc+R8ICj5WvrCldJquhVqalIbOohuZxjDVxDSP0RgzyST9zdzvvffrQkh8tBs9yy9fPhw45xhV5X1U8+Yhc3U0LcEdVxdOVq20OA0ooQjhpnfhzuDZTx6++m9edfDFlZGMtXKxI6HJnrZGGtauAWAhcgwVnnB/enkGo/25859l3wIcvpzP2EhuHNpWF9/dWs/UnKW4EOGDkqhbQyqxjsKzMgM/P1ymhlO5C4ezK4DeS/c7RdzQoa3x1PaWenJjJZwT9rQ1gSp/js1jYoZdyfX8M1/mp7uFaTR8mrt29FEMQILr62jQ1I5kA8OF59jIItVA78dJertTiBNs1ZKfLNG+MUHX1oaURtIHEAOw3p/Y197MWHEJEUGCxwfHj8MTZIcnsGKxzrIURYzPLnJgbxvG2hMrKdjItjbV11CYKeG8R7ygIdB3sBMFhkem0RAAQ3Fuka7UZtRHrasOqhYNilOwrkrwnhCU/ON5/q04vHV48ThxOCuoAbxnBQB+am65QnO8FqMxNCjBe14mpHhxBBGCWBLxD3iyWMaYMLUKsO7WYH6Stk1xCAGccmR/Ozs/bKJuXS39R/YgIjgROloSDA39Deit1SZWotsjD8pfp5ONqZ6uTfyWn+T7X0f59t5fqDhUA4ry0fYtjJcWeZQvTBu4/VqRuk9/l9Fy5cbnX+6Od26s58HjWWaflwkusKGxjm1bmhkvLXHvh1+WMbWncgPfZN+qcvex6xnUXkzvSiYP7EvTvH4toDxdqDD4+ygT+cKMMbH+3MCZ7H9uAaDnqytpVX8cDScJlRY0YIwpAjcNcuePgXP/P6Z30QuoP4J7WbYhuQAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;/README.md">
+<INLINE>
+**&name; Plugin**
+
+The plugin installs DenyHosts, a log-based intrusion prevention security tool for SSH
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.page">
+<INLINE>
+<![CDATA[
+Menu="NetworkServices"
+Title="DenyHosts"
+Icon="denyhosts.png"
+---
+<?PHP
+$denyhosts_cfg = parse_ini_file( "/boot/config/plugins/denyhosts/denyhosts.cfg");
+$denyhosts_running = file_exists( "/var/run/denyhosts/denyhosts.pid") ? "yes" : "no";
+$denyhosts_datacheck = shell_exec ( "/etc/rc.d/rc.denyhosts datacheck" );
+
+//Get local plugin file version
+$denyhosts_localplg = shell_exec('grep "<\!ENTITY version" /boot/config/plugins/denyhosts.plg | cut -d\" -f2');
+
+//Get remote plugin file version.  Uses Limetech plugin php to perform this function
+$denyhosts_remoteplg = shell_exec("/usr/local/sbin/plugin check denyhosts.plg");
+
+//Determine version of Denyhosts application
+$denyhosts_localapp = shell_exec("/usr/bin/env python /usr/bin/denyhosts.py --version");
+
+$controls_exist = "false";
+$updates_exist = "false";
+?>
+
+<html>
+  <head>
+    <style type="text/css">
+    .tooltip {
+        border-bottom: 1px dotted #000000; color: #000000; outline: none;
+        cursor: help; text-decoration: none;
+        position: relative;
+    }
+    .tooltip span {
+        margin-left: -999em;
+        position: absolute;
+    }
+    .tooltip:hover span {
+        border-radius: 5px 5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; 
+        box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.1); -webkit-box-shadow: 5px 5px rgba(0, 0, 0, 0.1); -moz-box-shadow: 5px 5px rgba(0, 0, 0, 0.1);
+        font-family: Calibri, Tahoma, Geneva, sans-serif;
+        position: absolute; left: 1em; top: 2em; z-index: 99;
+        margin-left: 0; width: 250px;
+    }
+    .classic { padding: 0.8em 1em; }
+    * html a:hover { background: transparent; }
+    .classic {background: #FFFFAA; border: 1px solid #FFAD33; }
+    </style>
+  </head>
+<body>
+
+<div style="width: 49%; float:left; border: 0px solid black;">
+  <div id="title">
+    <span class="left">Status:&nbsp;<img src='/plugins/denyhosts/device_status.png'>
+      <?if ($denyhosts_running=="yes"):?>
+        <span class="green"><b>DenyHosts is RUNNING</b></span>
+      <?else:?>
+        <span class="red"><b>DenyHosts is NOT RUNNING</b></span>
+      <?endif;?>
+    </span>
+  </div>
+  
+  <div style="border: 0px solid black;">
+    <span class="left">
+      <p>
+        <span class="green-text"><b><?=$denyhosts_localapp?></b></span>
+          <? if ($denyhosts_running=="yes"): ?>
+            <?=$denyhosts_datacheck?> 
+          <?endif;?> 
+      </p>
+    </span>
+  </div>
+  
+  <br>
+  
+  <div style="border: 0px solid black;">
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td>Plugin</td>
+        <td>Local Version</td>
+        <td>Online Version</td>
+      </tr>
+      <tr style="font-weight:bold; background:#FFFFFF;">
+        <td>DenyHosts Plugin</td>
+        <td>
+          <span class="green-text"><?=$denyhosts_localplg?></span>
+        </td>
+        <td>
+          <span class="green-text"><?=$denyhosts_remoteplg?></span>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <br></br>
+
+  <div>
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td colspan="2">Control Actions</td>
+      </tr>
+      <?if ($denyhosts_running=="yes"):?>
+        <tr>
+        <td width="30%">
+          <form name="denyhosts_start_stop" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.denyhosts stop">
+            <input type="submit" name="runCmd" value="Stop">
+          </form>
+        </td>
+        <td>Stop DenyHosts Daemon</td>
+        </tr>
+        <tr>
+        <td width="30%">
+          <form name="denyhosts_restart" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.denyhosts restart">
+            <input type="submit" name="runCmd" value="Restart">
+          </form>
+        </td>
+        <td>Restart DenyHosts Daemon</td>
+        </tr>
+        <?$controls_exist = "true"?>
+      <?else:?>
+        <tr>
+        <td width="30%">
+          <form name="denyhosts_start" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.denyhosts buttonstart">
+            <input type="submit" name="runCmd" value="Start">
+          </form>
+        </td>
+        <td>Start DenyHosts Daemon</td>
+        </tr>
+        <?$controls_exist = "true"?>
+      <?endif;?>
+      <?if ($controls_exist=="false"):?>
+        <tr>
+          <td colspan="2" align="center">No Control Actions available</td>
+        </tr>
+      <?endif;?>
+    </table>
+  </div>
+  <br></br>
+  <br></br>
+</div>
+
+<div style="width: 49%; float:right; border: 0px solid black;">
+  <div id="title">
+    <span class="left">Configuration:&nbsp;<img src='/plugins/denyhosts/new_config.png'></span>
+  </div>
+  <form name="denyhosts_settings" id="denyhosts_settings" method="POST" action="/plugins/denyhosts/denyhostsctl.php" target="progressFrame" onsubmit="return validateForm();">
+  <!--note to self: the /return/ in the onsubmit event is important as without it, the submit action is still processed-->
+    <input type="hidden" name="cmd" value="apply">  
+    <table class="settings">
+      <tr>
+      <td>Enable Denyhosts:</td>
+      <td><select name="SERVICE" size="1"  onChange="checkRUNNING(this.form);">
+         <?=mk_option($denyhosts_cfg['SERVICE'], "disable", "No");?>
+         <?=mk_option($denyhosts_cfg['SERVICE'], "enable", "Yes");?>
+         </select></td>
+      </tr>
+      <tr>
+      <td>Work Directory (WORK_DIR):</td>
+      <td><input type="text" name="WORK_DIR" value="<?=$denyhosts_cfg['WORK_DIR'];?>"></td>
+      </tr> 
+      <tr>
+      <td><a class="tooltip" href="#">Purge Deny:<span class="classic">Removes entries that are older than this time</span></a></td>
+      <td>
+      <input type="text" name="PURGE_DENY" value="<?=$denyhosts_cfg['PURGE_DENY'];?>" title="format is: i[dhwmy] Where 'i' is an integer (eg. 7) 'm' = minutes, 'h' = hours, 'd' = days, 'w' = weeks, 'y' = years">
+      </td>
+      </tr>      
+      <tr>
+      <td><a class="tooltip" href="#">Deny Threshold Invalid:<span class="classic">Block each host after the number of failed login attempts has exceeded this value.  This value applies to invalid user login attempts (eg. non-existent user accounts)</span></a></td>
+      <td><input type="text" name="DENY_THRESHOLD_INVALID" value="<?=$denyhosts_cfg['DENY_THRESHOLD_INVALID'];?>"></td>
+      </tr>      
+       <tr>
+      <td><a class="tooltip" href="#">Deny Threshold Valid:<span class="classic">Block each host after the number of failed login attempts has exceeded this value.  This value applies to valid user login attempts (eg. user accounts that exist in /etc/passwd) except for the "root" user</span></</td>
+      <td><input type="text" name="DENY_THRESHOLD_VALID" value="<?=$denyhosts_cfg['DENY_THRESHOLD_VALID'];?>"></td>
+      </tr>     
+      <tr>
+      <td><a class="tooltip" href="#">Deny Threshold Root:<span class="classic">Block each host after the number of failed login attempts has exceeded this value.  This value applies to "root" user login attempts only.</span></</td>
+      <td><input type="text" name="DENY_THRESHOLD_ROOT" value="<?=$denyhosts_cfg['DENY_THRESHOLD_ROOT'];?>"></td>
+      </tr>     
+      <tr>
+      <td><a class="tooltip" href="#">Deny Threshold Restricted:<span class="classic">Block each host after the number of failed login attempts has exceeded this value.  This value applies to usernames that appear in the WORK_DIR/restricted-usernames file only</span></</td>
+      <td><input type="text" name="DENY_THRESHOLD_RESTRICTED" value="<?=$denyhosts_cfg['DENY_THRESHOLD_RESTRICTED'];?>"></td>
+      </tr>      
+      <tr>
+      <td><a class="tooltip" href="#">Suspicious Login Report Allowed Hosts:<span class="classic">If set to YES, if a suspicious login attempt results from an allowed-host then it is considered suspicious.  If this is NO, then suspicious logins from allowed-hosts will not be reported. All suspicious logins from ip addresses that are not in allowed-hosts will always be reported.</span></a></td>
+      <td>
+      <select name="SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS" size="1" onChange="checkRUNNING(this.form);">
+        <?=mk_option($denyhosts_cfg['SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS'], 0, "No");?>
+        <?=mk_option($denyhosts_cfg['SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS'], 1, "Yes");?>
+      </select>
+      </td>
+      </tr>      
+      <tr>
+      <td><a class="tooltip" href="#">Hostname Lookup:<span class="classic">If set to YES, for each IP address that is reported by Denyhosts, the corresponding hostname will be looked up and reported as well if available).</span></a></td>
+         <td><select name="HOSTNAME_LOOKUP" size="1" onChange="checkRUNNING(this.form);">
+            <?=mk_option($denyhosts_cfg['HOSTNAME_LOOKUP'], 0, "No");?>
+            <?=mk_option($denyhosts_cfg['HOSTNAME_LOOKUP'], 1, "Yes");?>
+            </select>
+          </td>
+      </tr>           
+      <tr>
+      <td><a class="tooltip" href="#">Age Reset Valid:<span class="classic">Specifies the period of time between failed login attempts that, when exceeded will result in the failed count for this host to be reset to 0. This value applies to login attempts to all valid users (those within /etc/passwd) with the exception of root. If not defined, this count will never be reset.</span></a></td>
+      <td><input type="text" name="AGE_RESET_VALID" value="<?=$denyhosts_cfg['AGE_RESET_VALID'];?>" title="format is: i[dhwmy] Where 'i' is an integer (eg. 7) 'm' = minutes, 'h' = hours, 'd' = days, 'w' = weeks, 'y' = years"></td>
+      </tr>      
+      <tr>
+      <td><a class="tooltip" href="#">Age Reset Root:<span class="classic">Specifies the period of time between failed login attempts that, when exceeded will result in the failed count for this host to be reset to 0. This value applies to all login attempts to the "root" user account. If not defined, this count will never be reset.</span></a></td>
+      <td><input type="text" name="AGE_RESET_ROOT" value="<?=$denyhosts_cfg['AGE_RESET_ROOT'];?>" title="format is: i[dhwmy] Where 'i' is an integer (eg. 7) 'm' = minutes, 'h' = hours, 'd' = days, 'w' = weeks, 'y' = years"></td>
+      </tr>      
+      <tr>
+      <td><a class="tooltip" href="#">Age Reset Restricted:<span class="classic">Specifies the period of time between failed login attempts that, when exceeded will result in the failed count for this host to be reset to 0. This value applies to all login attempts to entries found in the WORK_DIR/restricted-usernames file. If not defined, the count will never be reset.</span></a></td>
+      <td><input type="text" name="AGE_RESET_RESTRICTED" value="<?=$denyhosts_cfg['AGE_RESET_RESTRICTED'];?>" title="format is: i[dhwmy] Where 'i' is an integer (eg. 7) 'm' = minutes, 'h' = hours, 'd' = days, 'w' = weeks, 'y' = years"></td>
+      </tr>      
+      <tr>
+      <td><a class="tooltip" href="#">Age Reset Invalid:<span class="classic">Specifies the period of time between failed login attempts that, when exceeded will result in the failed count for this host to be reset to 0.  This value applies to login attempts made to any invalid username (those that do not appear in /etc/passwd).  If not defined, count will never be reset.</span></a></td>
+      <td><input type="text" name="AGE_RESET_INVALID" value="<?=$denyhosts_cfg['AGE_RESET_INVALID'];?>" title="format is: i[dhwmy] Where 'i' is an integer (eg. 7) 'm' = minutes, 'h' = hours, 'd' = days, 'w' = weeks, 'y' = years"></td>
+      </tr>      
+      <tr>
+      <td><a class="tooltip" href="#">Daemon Sleep:<span class="classic">This is the amount of time DenyHosts will sleep between polling the syslog.</span></a></td>
+      <td><input type="text" name="DAEMON_SLEEP" value="<?=$denyhosts_cfg['DAEMON_SLEEP'];?>" title="format is: i[dhwmy] Where 'i' is an integer (eg. 7) 'm' = minutes, 'h' = hours, 'd' = days, 'w' = weeks, 'y' = years"></td>
+      </tr>      
+      <tr>
+      <td><a class="tooltip" href="#">Daemon Purge:<span class="classic">How often should DenyHosts run the purge mechanism to expire old entries in /etc/hosts.deny</span></a></td>
+      <td><input type="text" name="DAEMON_PURGE" value="<?=$denyhosts_cfg['DAEMON_PURGE'];?>" title="format is: i[dhwmy] Where 'i' is an integer (eg. 7) 'm' = minutes, 'h' = hours, 'd' = days, 'w' = weeks, 'y' = years"></td>
+      </tr>      
+    </table>
+
+    <div align="center">
+      <hr size="3" align="center" width="75%" color="grey" style="margin-top:20px;margin-bottom:18px">
+      <input type="submit" name="runCmd" value="Apply"><button type="button" onClick="done();">Done</button>      
+    </div>
+  </form>
+  <br></br>
+  <br></br>
+</div>
+
+<script type="text/javascript">
+function onLoad() {
+  // do nothing
+}
+
+function checkRUNNING(form) {
+   if ("<?=$denyhosts_running;?>" == "yes") {
+    form.WORK_DIR.disabled = true;
+    form.PURGE_DENY.disabled = true;
+    form.DENY_THRESHOLD_INVALID.disabled = true;
+    form.DENY_THRESHOLD_VALID.disabled = true;
+    form.DENY_THRESHOLD_ROOT.disabled = true;
+    form.DENY_THRESHOLD_RESTRICTED.disabled = true;
+    form.SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS.disabled = true;
+    form.HOSTNAME_LOOKUP.disabled = true;
+    form.AGE_RESET_VALID.disabled = true;
+    form.AGE_RESET_ROOT.disabled = true;
+    form.AGE_RESET_RESTRICTED.disabled = true;
+    form.AGE_RESET_INVALID.disabled = true;
+    form.DAEMON_SLEEP.disabled = true;
+    form.DAEMON_PURGE.disabled = true;
+   }
+}
+
+function validateForm() {
+  document.forms["denyhosts_settings"]["WORK_DIR"].disabled = false;  
+  document.forms["denyhosts_settings"]["WORK_DIR"].disabled = false;
+  document.forms["denyhosts_settings"]["PURGE_DENY"].disabled = false;
+  document.forms["denyhosts_settings"]["DENY_THRESHOLD_INVALID"].disabled = false;
+  document.forms["denyhosts_settings"]["DENY_THRESHOLD_VALID"].disabled = false;
+  document.forms["denyhosts_settings"]["DENY_THRESHOLD_ROOT"].disabled = false;
+  document.forms["denyhosts_settings"]["DENY_THRESHOLD_RESTRICTED"].disabled = false;
+  document.forms["denyhosts_settings"]["SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS"].disabled = false;
+  document.forms["denyhosts_settings"]["HOSTNAME_LOOKUP"].disabled = false;
+  document.forms["denyhosts_settings"]["AGE_RESET_VALID"].disabled = false;
+  document.forms["denyhosts_settings"]["AGE_RESET_ROOT"].disabled = false;
+  document.forms["denyhosts_settings"]["AGE_RESET_RESTRICTED"].disabled = false;
+  document.forms["denyhosts_settings"]["AGE_RESET_INVALID"].disabled = false;
+  document.forms["denyhosts_settings"]["DAEMON_SLEEP"].disabled = false;
+  document.forms["denyhosts_settings"]["DAEMON_PURGE"].disabled = false;  
+
+  return (true);
+}
+
+onLoad();
+checkRUNNING(document.denyhosts_settings);
+</script>
+</body>
+</html>
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/denyhostsctl.php" Mode="0770">
+<INLINE>
+<![CDATA[
+<?PHP
+  $logfile = "/var/log/plugins/denyhosts";
+  $configfile = "/boot/config/plugins/denyhosts/denyhosts.cfg";
+
+  if (empty($_SERVER['SHELL']))
+    $newline = "<br>";
+  else
+    $newline = "\n";
+
+  $cur_dt = date("F j\, Y h:i:s A");
+  write_log("\nStart: $cur_dt");
+ 
+  $settings = array(
+    "SERVICE",
+    "WORK_DIR",
+	"PURGE_DENY",
+	"DENY_THRESHOLD_INVALID",
+	"DENY_THRESHOLD_VALID",
+    "DENY_THRESHOLD_ROOT",
+    "DENY_THRESHOLD_RESTRICTED",
+    "SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS",
+    "HOSTNAME_LOOKUP",
+    "AGE_RESET_VALID",
+    "AGE_RESET_ROOT",
+    "AGE_RESET_RESTRICTED",
+    "AGE_RESET_INVALID",
+    "DAEMON_SLEEP",
+    "DAEMON_PURGE",    
+  );
+  
+  
+  //parse_str($argv[1],$_POST);
+
+  $SERVICE=$_POST['SERVICE'];
+  $WORK_DIR=$_POST['WORK_DIR'];
+  $PURGE_DENY=$_POST['PURGE_DENY'];
+  $DENY_THRESHOLD_INVALID=$_POST['DENY_THRESHOLD_INVALID'];
+  $DENY_THRESHOLD_VALID=$_POST['DENY_THRESHOLD_VALID'];
+  $DENY_THRESHOLD_ROOT=$_POST['DENY_THRESHOLD_ROOT'];
+  $DENY_THRESHOLD_RESTRICTED=$_POST['DENY_THRESHOLD_RESTRICTED'];
+  $SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS=$_POST['SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS'];
+  $HOSTNAME_LOOKUP=$_POST['HOSTNAME_LOOKUP'];
+  $AGE_RESET_VALID=$_POST['AGE_RESET_VALID'];
+  $AGE_RESET_ROOT=$_POST['AGE_RESET_ROOT'];
+  $AGE_RESET_RESTRICTED=$_POST['AGE_RESET_RESTRICTED'];
+  $AGE_RESET_INVALID=$_POST['AGE_RESET_INVALID'];
+  $DAEMON_SLEEP=$_POST['DAEMON_SLEEP'];
+  $DAEMON_PURGE=$_POST['DAEMON_PURGE'];
+
+  switch ($_POST['cmd']) {
+    case 'apply':
+      if ($SERVICE == "enable") {
+        enabledenyhosts();
+      }
+      else
+        disabledenyhosts();
+      break;
+    case 'buttonstart':
+      buttonstartdenyhosts();
+      break;
+    case 'restart':
+      restartdenyhosts();
+      break;
+    case 'stop':
+      stopdenyhosts();
+      break;
+    case 'updateplg':
+      updatedenyhosts();
+      break;
+    default:
+    break;
+  }
+
+  if (empty($_SERVER['SHELL'])) {
+    echo("<html>");
+    echo("<head><script>var goback=parent.location;</script></head>");
+    echo("<body onLoad=\"parent.location=goback;\"></body>");
+    echo("</html>");
+  }
+  
+  $cur_dt = date("F j\, Y h:i:s A");
+  write_log("\nEnd: $cur_dt");
+  
+  function startdenyhosts() {
+    global $newline, $log;
+    exec_log("/etc/rc.d/rc.denyhosts start");
+  }
+
+  function buttonstartdenyhosts() {
+    global $newline, $log;
+    exec_log("/etc/rc.d/rc.denyhosts buttonstart");
+  }
+
+  function restartdenyhosts() {
+    global $newline, $log;
+    exec_log("/etc/rc.d/rc.denyhosts restart");
+  }
+  
+  function stopdenyhosts() {
+    global $newline, $log;
+    exec_log("/etc/rc.d/rc.denyhosts stop");
+  }
+
+  function updatedenyhosts() {
+    global $newline, $log;
+    exec_log("/etc/rc.d/rc.denyhosts updateplg");
+  }
+  
+  function enabledenyhosts() {
+    global $newline, $log, $SERVICE, $WORK_DIR, $PURGE_DENY, $DENY_THRESHOLD_INVALID, $DENY_THRESHOLD_VALID, $DENY_THRESHOLD_ROOT, $DENY_THRESHOLD_RESTRICTED, $SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS, $HOSTNAME_LOOKUP, $AGE_RESET_VALID, $AGE_RESET_ROOT, $AGE_RESET_RESTRICTED, $AGE_RESET_INVALID, $DAEMON_SLEEP, $DAEMON_PURGE;
+    exec_log("/etc/rc.d/rc.denyhosts $SERVICE $WORK_DIR $PURGE_DENY $DENY_THRESHOLD_INVALID $DENY_THRESHOLD_VALID $DENY_THRESHOLD_ROOT $DENY_THRESHOLD_RESTRICTED $SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS $HOSTNAME_LOOKUP $AGE_RESET_VALID $AGE_RESET_ROOT $AGE_RESET_RESTRICTED $AGE_RESET_INVALID $DAEMON_SLEEP $DAEMON_PURGE"); 
+  }
+
+  function disabledenyhosts() {
+    global $newline, $log, $SERVICE, $WORK_DIR, $PURGE_DENY, $DENY_THRESHOLD_INVALID, $DENY_THRESHOLD_VALID, $DENY_THRESHOLD_ROOT, $DENY_THRESHOLD_RESTRICTED, $SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS, $HOSTNAME_LOOKUP, $AGE_RESET_VALID, $AGE_RESET_ROOT, $AGE_RESET_RESTRICTED, $AGE_RESET_INVALID, $DAEMON_SLEEP, $DAEMON_PURGE;
+    //echo "<script type='text/javascript'>alert('DAEMON_PURGE: $DAEMON_PURGE');</script>";
+    exec_log("/etc/rc.d/rc.denyhosts $SERVICE $WORK_DIR $PURGE_DENY $DENY_THRESHOLD_INVALID $DENY_THRESHOLD_VALID $DENY_THRESHOLD_ROOT $DENY_THRESHOLD_RESTRICTED $SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS $HOSTNAME_LOOKUP $AGE_RESET_VALID $AGE_RESET_ROOT $AGE_RESET_RESTRICTED $AGE_RESET_INVALID $DAEMON_SLEEP $DAEMON_PURGE"); 
+  }
+   
+  function exec_log($cmd) {
+    $results = exec($cmd);    
+    $results = "\nCMD: $cmd \nResults: $results";
+    write_log($results);
+  }
+
+  function write_log($contents) {
+    global $logfile;
+    write_string($logfile, "$contents\n", FALSE);
+  }
+    
+  function write_string ($file, $contents, $overwrite) {
+    if (file_exists($file)) {
+      if ($overwrite)
+          unlink($file);
+          touch($file);
+    }
+    else {
+      touch($file);
+    }
+    
+    $fp = @fopen($file, 'a');
+    @flock($fp, LOCK_EX);
+    @fwrite($fp, $contents);
+    @flock($fp, LOCK_UN);
+    @fclose($fp);
+  }
+
+?>
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/etc/rc.d/rc.&name;" Mode="0770">
+<INLINE>
+<![CDATA[
+#!/bin/bash
+
+denyhosts_start()
+{
+  # no-op if not enabled
+  if [ $SERVICE != "enable" ]; then
+    return
+  fi
+
+  # no-op if already running
+  if [ -f /var/run/denyhosts/denyhosts.pid ]; then
+    return
+  fi   
+  sudo -u nobody /usr/bin/env python /usr/bin/denyhosts.py --daemon --config=/boot/config/plugins/denyhosts/denyhosts.cfg &> /dev/null 
+}
+
+denyhosts_stop()
+{   
+  # no-op if already stopped
+  if [ ! -f /var/run/denyhosts/denyhosts.pid ]; then
+    return
+  fi 
+
+  #Denyhosts expects SIGTERM
+  kill $(cat /var/run/denyhosts/denyhosts.pid)
+  sleep 1
+
+  #Expect the unexpected
+  PID=$(ps -ef | grep denyhosts.py | grep -v grep | awk '{print $2}');
+  test "$PID" != "" && kill -9 $PID
+  [[ -f /var/run/denyhosts/denyhosts.pid ]] && rm -f /var/run/denyhosts/denyhosts.pid
+}
+
+denyhosts_restart()
+{
+  denyhosts_stop
+  denyhosts_start
+}
+
+denyhosts_buttonstart()
+{
+  CONFIG="/boot/config/plugins/denyhosts/denyhosts.cfg"
+  if [ -f $CONFIG ]; then
+    # a less greedy sed.  only replaces the first occurance of disabled with enabled.  ie. will only hit service line which is (usually) always first in cfg
+	sed -i "0,/"disable"/s/"disable"/"enable/"" $CONFIG 2>/dev/null  
+	SERVICE=enable
+    denyhosts_start
+  fi
+}
+
+write_config()
+{
+  echo "# denyhosts configuration:" > /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "SERVICE=$SERVICE" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "WORK_DIR=$WORK_DIR" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "PURGE_DENY=$PURGE_DENY" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "DENY_THRESHOLD_INVALID=$DENY_THRESHOLD_INVALID" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "DENY_THRESHOLD_VALID=$DENY_THRESHOLD_VALID" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "DENY_THRESHOLD_ROOT=$DENY_THRESHOLD_ROOT" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "DENY_THRESHOLD_RESTRICTED=$DENY_THRESHOLD_RESTRICTED" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS=$SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "HOSTNAME_LOOKUP=$HOSTNAME_LOOKUP" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "AGE_RESET_VALID=$AGE_RESET_VALID" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "AGE_RESET_ROOT=$AGE_RESET_ROOT" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "AGE_RESET_RESTRICTED=$AGE_RESET_RESTRICTED" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "AGE_RESET_INVALID=$AGE_RESET_INVALID" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "DAEMON_SLEEP=$DAEMON_SLEEP" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "DAEMON_PURGE=$DAEMON_PURGE" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "SECURE_LOG=/var/log/syslog" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "HOSTS_DENY=/etc/hosts.deny" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "BLOCK_SERVICE=sshd" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "LOCK_FILE=/var/run/denyhosts/denyhosts.pid" >> /boot/config/plugins/denyhosts/denyhosts.cfg
+  echo "DAEMON_LOG=/var/log/plugins/denyhosts.out  " >> /boot/config/plugins/denyhosts/denyhosts.cfg  
+}
+
+denyhosts_change_settings()
+{
+  #nb. when passing params from enable/disable functions, params will take new numbering. ie. $2 in enable will become the first ($1) param here, and so on
+  WORK_DIR=$1
+  PURGE_DENY=$2
+  DENY_THRESHOLD_INVALID=$3
+  DENY_THRESHOLD_VALID=$4
+  DENY_THRESHOLD_ROOT=$5
+  DENY_THRESHOLD_RESTRICTED=$6
+  
+  #crappy hack to turn 0 or 1 value back to YES/NO for correct storage in cfg
+  if [ "$7" = "0" ]; then
+    SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS=NO
+  else
+    SUSPICIOUS_LOGIN_REPORT_ALLOWED_HOSTS=YES
+  fi
+  if [ "$8" = "0" ]; then
+    HOSTNAME_LOOKUP=NO
+  else
+    HOSTNAME_LOOKUP=YES
+  fi 
+
+  AGE_RESET_VALID=$9
+  AGE_RESET_ROOT=${10}
+  AGE_RESET_RESTRICTED=${11}
+  AGE_RESET_INVALID=${12}
+  DAEMON_SLEEP=${13}
+  DAEMON_PURGE=${14}
+}
+
+denyhosts_enable()
+{
+  SERVICE=$1 #enable
+  denyhosts_change_settings $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14} ${15}
+  write_config
+  denyhosts_install
+  denyhosts_restart
+}
+
+denyhosts_disable()
+{
+  denyhosts_stop
+  SERVICE=$1 #disable
+  denyhosts_change_settings $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14} ${15}
+  write_config
+}
+
+denyhosts_datacheck()
+{
+  array=( ramfs proc tempfs sysfs )
+  fs=$( stat -f -c '%T' $WORK_DIR )
+  if [ "$fs" = "msdos" ]; then
+    echo "<p style="color:red\;"><b>WARNING:</b> Your WORK_DIR is located on your flash drive. This can decrease the life span of your flash device!</p>"
+  else
+    for i in "${array[@]}"
+    do
+      if [ $i = $fs ]; then
+        echo "<p style="color:red\;"><b>WARNING:</b> Your WORK_DIR is not persistent and WILL NOT survive a reboot. The WORK_DIR maintains a running history of past DenyHosts entries and ideally should be maintained across reboots.  Please locate your WORK_DIR on persistent storage. eg. cache/array disk</p>"
+        break
+      else
+        echo "<p style="color:green\;">WORK_DIR located on persistent storage. Your data will persist after a reboot :-)</p>"
+        break
+      fi
+    done
+  fi
+}
+
+# read our configuration
+source /boot/config/plugins/denyhosts/denyhosts.cfg
+
+case "$1" in
+  'start')
+    denyhosts_start
+  ;;
+  'stop')
+    denyhosts_stop
+  ;;
+  'restart')
+    denyhosts_restart
+  ;;
+  'enable')
+	denyhosts_enable $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14} ${15}
+  ;;
+  'disable')
+    denyhosts_disable $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14} ${15}
+  ;;
+  'buttonstart')
+    denyhosts_buttonstart
+  ;;
+  'getver')
+    denyhosts_getver $2 $3
+    ;;  
+  'datacheck')
+    denyhosts_datacheck
+  ;;
+    *)
+    echo "usage $0 start|stop|restart|enable|disable|buttonstart|datacheck"
+esac
+]]>
+</INLINE>
+</FILE>
+
+<!-- event handler -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/disks_mounted" Mode="0770">
+<INLINE>
+#!/bin/bash
+# include our config vars and check if the service is set to enable.  if so, bring it up
+source /boot/config/plugins/&name;/denyhosts.cfg
+[[ $SERVICE = "enable" ]] &amp;&amp; /etc/rc.d/rc.&name; buttonstart
+</INLINE>
+</FILE>
+
+<!-- event handler to stop denyhosts when unmounting disks -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/unmounting_disks" Mode="0770">
+<INLINE>
+#!/bin/bash
+/etc/rc.d/rc.&name; stop
+</INLINE>
+</FILE>
+
+<FILE Mode="0770" Run="/bin/bash">
+<INLINE>
+#!/bin/bash
+if [ "&devplugin;" == "true" ]; then
+  if [ -f /boot/config/plugins/&name;.php ]; then
+    rm -f /usr/local/emhttp/plugins/&name;/&name;.php
+    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+  else
+    mv /usr/local/emhttp/plugins/&name;/&name;.php /boot/config/plugins/&name;.php
+    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+  fi
+  if [ -f /boot/config/plugins/rc.&name; ]; then
+    rm -f /etc/rc.d/rc.&name;
+    ln -s /boot/config/plugins/rc.&name; /etc/rc.d/rc.&name;
+  else
+    mv /etc/rc.d/rc.&name; /boot/config/plugins/rc.&name;
+    ln -s /boot/config/plugins/rc.&name; /etc/rc.d/rc.&name;
+  fi
+fi
+</INLINE>
+</FILE>
+
+
+</PLUGIN>
