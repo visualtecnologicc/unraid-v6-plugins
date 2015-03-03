@@ -5,8 +5,8 @@
 <!ENTITY author     "overbyrn">
 <!ENTITY version    "2015.02.26">
 <!ENTITY category   "Network Services">
-<!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-plugins/master/&name;.plg">
-<!ENTITY packageURL "https://github.com/overbyrn/unraid-plugins/releases/download/&name;">
+<!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
+<!ENTITY packageURL "https://github.com/overbyrn/unraid-v6-plugins/releases/download/&name;">
 ]>
 
 <PLUGIN  name="&name;"
@@ -75,17 +75,6 @@ if [ ! -f /boot/config/plugins/&name;/putty-0.64-$(/usr/bin/uname -m)-1rj.txz ];
   fi
 fi
 /sbin/upgradepkg --install-new /boot/config/plugins/&name;/putty-0.64-$(/usr/bin/uname -m)-1rj.txz
-</INLINE>
-</FILE>
-
-<!--
-The 'remove' script.
--->
-<FILE Run="/bin/bash" Method="remove">
-<INLINE>
-rm -r /usr/local/emhttp/plugins/&name;
-rm -f /etc/rc.d/rc.&name;
-rm -rf /boot/config/plugins/&name;
 </INLINE>
 </FILE>
 

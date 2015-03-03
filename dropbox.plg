@@ -1,0 +1,719 @@
+<?xml version='1.0' standalone='yes'?>
+
+<!DOCTYPE PLUGIN [
+<!ENTITY name       "dropbox">
+<!ENTITY author     "overbyrn">
+<!ENTITY version    "2014.09.18">
+<!ENTITY category   "Network Services">
+<!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
+<!ENTITY packageURL "https://github.com/overbyrn/unraid-v6-plugins/releases/download/&name;">
+<!ENTITY devplugin  "false">
+]>
+
+<PLUGIN  name="&name;"
+         author="&author;"
+         version="&version;"
+         category="&category;"
+         pluginURL="&pluginURL;">
+
+<!--
+Copyright 2013, Rich Manton (overbyrn)
+
+This Plugin installs and provides Dropbox support for unRAID.
+
+Plugin file locations:
+ /boot/plugins/dropbox.plg                                          # this file
+
+ /boot/config/plugins/dropbox/dropbox-[ver].tar.gz                  # dropbox application
+ /boot/config/plugins/dropbox/dropbox.py                            # dropbox CLI control script
+ /boot/config/plugins/dropbox/dropbox.cfg                           # non-volatile configuration
+ 
+ /etc/rc.d/rc.dropbox                                               # plugin control script
+
+ /usr/local/emhttp/plugins/dropbox/dropbox.page                     # page file for webGui menu system
+ /usr/local/emhttp/plugins/dropbox/dropbox.php                      # webGui page code (settings)
+ /usr/local/emhttp/plugins/dropbox/dropbox.png                      # plugin icon file
+ /usr/local/emhttp/plugins/dropbox/device_status.png                # plugin webgui image file
+ /usr/local/emhttp/plugins/dropbox/new_config.png                   # plugin webgui image file
+ /usr/local/emhttp/plugins/dropbox/information.png                  # plugin webgui image file
+
+ /var/run/dropbox/dropbox.pid                                       # run-time pid file
+ 
+-->
+
+<FILE Name="/boot/config/plugins/&name;/&name;.cfg">
+<INLINE>
+SERVICE="disable"
+DROPBOXDBDIR="/mnt/disk1/DropboxDB"
+DROPBOXDIR="/mnt/disk1/DropboxData"
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash">
+<INLINE>
+#!/bin/bash
+# Check each config entry in plugin config file, set to default value if missing, do nothing if present
+CFGFILE=/boot/config/plugins/&name;/&name;.cfg
+! grep -q SERVICE "$CFGFILE" &amp;&amp; sed -i '$a\SERVICE=\"'"disable"'\"' "$CFGFILE" || :
+! grep -q DROPBOXDBDIR "$CFGFILE" &amp;&amp; sed -i '$a\DROPBOXDBDIR=\"'"/mnt/disk1/DropboxDB"'\"' "$CFGFILE" || :
+! grep -q DROPBOXDIR "$CFGFILE" &amp;&amp; sed -i '$a\DROPBOXDIR=\"'"/mnt/disk1/DropboxData"'\"' "$CFGFILE" || :
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="install">
+<INLINE>
+if [ -d /usr/local/emhttp/plugins/&name; ]; then
+  rm -r /usr/local/emhttp/plugins/&name;
+fi;
+if [ -f /etc/rc.d/rc.&name; ]; then
+  rm -f /etc/rc.d/rc.&name;
+fi;
+
+#load plugin config
+source /boot/config/plugins/&name;/&name;.cfg
+
+#create dropbox application directory
+[[ ! -d /usr/local/&name; ]] &amp;&amp; mkdir -p /usr/local/&name;
+
+#install dropbox from local copy, download from dropbox web site if copy not present in plugin directory
+#dropbox app is in two parts:
+#1. the main application
+if [[ ! -e /boot/config/plugins/&name;/dropbox-lnx.x86_64.tar.gz ]]; then
+  echo "Downloading Dropbox application..."
+  #wget -nv -P /tmp -O dropbox-lnx.x86_64.tar.gz "https://www.dropbox.com/download?plat=lnx.x86_64"
+  #wget -P /tmp -O dropbox-lnx.x86_64.tar.gz "https://www.dropbox.com/download?plat=lnx.x86_64"
+  curl -L -o /tmp/dropbox-lnx.x86_64.tar.gz "https://www.dropbox.com/download?plat=lnx.x86_64"
+  if [ ! -f /tmp/dropbox-lnx.x86_64.tar.gz ]; then
+    echo "** ERROR: something went wrong, Dropbox application did not download as expected. Plugin installation failed! **"
+    exit 1
+  fi
+  echo "Extracting Dropbox..."
+  tar -C /usr/local/dropbox -zxvf /tmp/dropbox-lnx.x86_64.tar.gz 2>/dev/null
+  echo "Saving local copy of Dropbox application to plugin directory..."
+  mv -f /tmp/dropbox-lnx.x86_64.tar.gz /boot/config/plugins/&name;/dropbox-lnx.x86_64.tar.gz 2>/dev/null
+else
+  echo "Extracting Dropbox..."
+  tar -C /usr/local/dropbox -zxvf /boot/config/plugins/&name;/dropbox-lnx.x86_64.tar.gz 2>/dev/null
+fi
+
+#2. python CLI wrapper
+if [[ ! -e /boot/config/plugins/&name;/dropbox.py ]]; then
+  echo "Downloading Dropbox python CLI wrapper script..."
+  #wget -nv -q -P /tmp -O dropbox.py https://www.dropbox.com/download?dl=packages/dropbox.py
+  #wget -P /tmp -O dropbox.py "https://www.dropbox.com/download?dl=packages/dropbox.py"
+  curl -L -o /tmp/dropbox.py "https://www.dropbox.com/download?dl=packages/dropbox.py"
+  if [ ! -f /tmp/dropbox.py ]; then
+    echo "** ERROR: something went wrong, Dropbox python CLI script did not download as expected. Plugin installation failed! **"
+    exit 1
+  fi
+  echo "Installing Dropbox python CLI wrapper script..."
+  cp -f /tmp/dropbox.py /usr/local/sbin/dropbox.py
+  echo "Saving local copy of Dropbox python CLI wrapper script to plugin directory..."
+  mv -f /tmp/dropbox.py /boot/config/plugins/&name;/dropbox.py
+else
+  echo "Installing Dropbox python CLI wrapper script..."
+  cp -f /boot/config/plugins/&name;/dropbox.py /usr/local/sbin/dropbox.py
+fi
+
+#set ownership and permission of dropbox application
+echo "Setting permissions on Dropbox application"
+chown -R nobody:users /usr/local/&name; 2>/dev/null
+chmod -R 775 /usr/local/&name; 2>/dev/null
+
+#set ownership and permissions of CLI script
+echo "Setting permissions on Dropbox python CLI wrapper script"
+chmod 0755 /usr/local/sbin/dropbox.py
+chown nobody:users /usr/local/sbin/dropbox.py
+
+# create dropbox-writable directory for pid file
+if [ ! -d /var/run/&name; ]; then
+  mkdir -m 0777 /var/run/&name;
+  chown nobody:users /var/run/&name;
+fi
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+rm -r /usr/local/emhttp/plugins/&name;
+rm -f /etc/rc.d/rc.&name;
+rm -rf /boot/config/plugins/&name;
+rm -rf /usr/local/&name;
+rm -f /usr/local/sbin/dropbox.py
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.png" Type="base64">
+<INLINE>
+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"
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/device_status.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFJSURBVDiNtZI9awJBEIafVctUSv6KvUUCEpPiDhsFsT2CVcSt5OqzlWBvKzb5QDCCvX8lYL2zsm4alTtRMYRM987OPLzzssp7z1+qcKo5m81u8/n8s1KqDuC9nzjnXqvV6vdVAOecds69pFoxcAN0TwKm0+kSWG+326Rer69EpA2glLrbOfgC2kB3MpmUc7mcBophGFZyACKiRYTNZqN3uiQiBEGwCIJgISKISAnAWquNMYiIPjhoNBorINzbMsZkbKZ1s9kM028FgNFo9AE8AJ9RFNVEJANI6+PZAkAURbVzC8f6eLYAMBgMyt57DRS11pVLgCRJlsBaKZX0er3VIURrLcaYfYiZpbQ2xmhrbTbEfr+fCeaSgziOM4Grf/nKnU7nJHU4HKqrACIy997fp3tKqfmp2bMntFqtN+BxJ9/H4/HTrwDX1g/Ee8aNyc3z/wAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/new_config.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAHcSURBVDiNpdKxa5NhEAbwX4uDUEFEpzo6FNShIohD0SVQwQyVDEJ0MEMxoNiohYIFhUqQYizRLNEPWxyMoGaRKiLBRUUd/AMqOAhVBF1Epd/hUId+FZF0EA9eXu7uuXuf97nrWV5e9j+2bq1Ep9PpQz8+5XK5b51OZwiXcC+Xy11bxfV0YzA/P38Cl/E1u6/jDb5jfz6f/9GVQbvdTrAXO1HD+UKhsNRut3MYwMlCofAjw1ZR+82g1WptwnNsx91isXh4tXGr1dqKRTzDKYzgAnb1zM7O9uIIzmAQd3EII6VS6RHMzc314T02/0H4YqlUOr8uIrbiCrbgeLlcvtFsNs/hfrPZfImx7Fub8Rp3sFAulx//FrFerw8iwb5KpbJUr9fXYyl76QOGMuozlUpl8U/duk4BpqenZ3A6cxcwNDEx8eVvXG/XakTE2Yi4HREiYiAiHk5NTfX9jevKYHJysh83cQy3MJylniBfrVZ/rtlgfHx8g5VxDeKVlZE9wJ4M0sLRWq22TJdVjohmVgy7sREHrezIAIr4jEpXDdI03ZGmqexcbTQabxuNxpc0TYfTNP2YxcdGR0e3dW0QEcci4kVEPI2IqdV4kiTvI+JARCxGxIUkSd6tKeK/2C+l7dZWE4J7LwAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/information.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAKcSURBVDjLpZPLa9RXHMU/d0ysZEwmMQqZiTaP0agoaKGJUiwIxU0hUjtUQaIuXHSVbRVc+R8ICj5WvrCldJquhVqalIbOohuZxjDVxDSP0RgzyST9zdzvvffrQkh8tBs9yy9fPhw45xhV5X1U8+Yhc3U0LcEdVxdOVq20OA0ooQjhpnfhzuDZTx6++m9edfDFlZGMtXKxI6HJnrZGGtauAWAhcgwVnnB/enkGo/25859l3wIcvpzP2EhuHNpWF9/dWs/UnKW4EOGDkqhbQyqxjsKzMgM/P1ymhlO5C4ezK4DeS/c7RdzQoa3x1PaWenJjJZwT9rQ1gSp/js1jYoZdyfX8M1/mp7uFaTR8mrt29FEMQILr62jQ1I5kA8OF59jIItVA78dJertTiBNs1ZKfLNG+MUHX1oaURtIHEAOw3p/Y197MWHEJEUGCxwfHj8MTZIcnsGKxzrIURYzPLnJgbxvG2hMrKdjItjbV11CYKeG8R7ygIdB3sBMFhkem0RAAQ3Fuka7UZtRHrasOqhYNilOwrkrwnhCU/ON5/q04vHV48ThxOCuoAbxnBQB+am65QnO8FqMxNCjBe14mpHhxBBGCWBLxD3iyWMaYMLUKsO7WYH6Stk1xCAGccmR/Ozs/bKJuXS39R/YgIjgROloSDA39Deit1SZWotsjD8pfp5ONqZ6uTfyWn+T7X0f59t5fqDhUA4ry0fYtjJcWeZQvTBu4/VqRuk9/l9Fy5cbnX+6Od26s58HjWWaflwkusKGxjm1bmhkvLXHvh1+WMbWncgPfZN+qcvex6xnUXkzvSiYP7EvTvH4toDxdqDD4+ygT+cKMMbH+3MCZ7H9uAaDnqytpVX8cDScJlRY0YIwpAjcNcuePgXP/P6Z30QuoP4J7WbYhuQAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/README.md">
+<INLINE>
+**&name; Plugin**
+
+This Plugin installs and provides Dropbox support for unRAID.
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.page">
+<INLINE>
+<![CDATA[
+Menu="NetworkServices"
+Title="Dropbox"
+Icon="&name;.png"
+---
+<?PHP
+$dropbox_cfg = parse_ini_file( "/boot/config/plugins/dropbox/dropbox.cfg");
+$dropbox_installed = is_dir( $dropbox_cfg['DROPBOXDBDIR'] ) ? "yes" : "no";
+if ($dropbox_installed=="yes") {
+  $dropbox_running = file_exists( "/var/run/dropbox/dropbox.pid" ) ? "yes" : "no";
+}
+
+#Blah, this next bit is truely hacky.
+#Dropbox after successful activation/link, changes the directory permissions of Dropbox Data location.  NOT the files within that dir though.
+#This isn't a problem for most situations as the daemon runs as user NOBODY and it is assumed the majority of users will access their Dropbox
+#directory over a public "guest" share.  But when you accessing with assigned users, it gets messy as the user will not have the correct
+#permissions to enter the directory.  We can't really detect when the activation state is complete as subsequent dropbox status values could
+#be a mixture of idle, indexing files, downloading files etc.  So, assume a user upon successful activation is going to either refresh this
+#page or exit and reenter.  In which case, blindly do a chmod on the Dropbox directory to reset its permissions to something more friendly.
+if (is_dir($dropbox_cfg['DROPBOXDIR'])) {
+  chmod($dropbox_cfg['DROPBOXDIR'],0775);
+}
+#Also, it changes the Dropbox Database dir right after the initial daemon start.  So for completeness, make that more permission friendly too
+#even though it's less of an issue as this dir is only ever accessed by the deamon itself and so technically it should never be noticed.
+if (is_dir($dropbox_cfg['DROPBOXDBDIR'])) {
+  chmod($dropbox_cfg['DROPBOXDBDIR'],0775);
+}
+
+#one more hack for good luck.  this one handles recurive symlinks.  some users report seeing recursive directories being created.  I have been able to reproduce
+#the issue occasionally, but each time I have not found the root cause.  On times when it did occur, symlinks were created such as the following examples:
+#real dropbox db dir = /mnt/disk1/.dropbox
+#symlink exists of /mnt/disk1/.dropbox/.dropbox -> /mnt/disk1/.dropbox
+#or
+#real dropbox dir = /mnt/disk1/Dropbox
+#symlink exists of /mnt/disk1/Dropbox/Dropbox -> /mnt/disk1/Dropbox
+#this following calls a function in the back-end rc script to check for the presence of these symlinks and remove them.  It will only delete a symlink
+#such as the examples above.  If by some chance a symlink of that name exists but points to another location, it will NOT delete it.  Making it fairly
+#safe to assume no user data will ever be deleted.  It also ONLY checks for symlinks, so if a user has a file of the same name, it will NOT delete it.
+#shell_exec("/etc/rc.d/rc.dropbox chk4symlinks");
+
+$status = exec( "sudo -u nobody HOME=/usr/local/dropbox /usr/local/sbin/dropbox.py status" );
+switch ($status) {
+  case "Waiting to be linked to a Dropbox account...":
+    $actlink = exec( "sudo -u nobody HOME=/usr/local/dropbox /usr/local/sbin/dropbox.py start" );
+    break;
+  case "Dropbox isn't running!":
+    break;
+  }
+
+//Get local plugin file version
+$dropbox_localplg = shell_exec('grep "<\!ENTITY version" /boot/config/plugins/dropbox.plg | cut -d\" -f2');
+
+//Get remote plugin file version.  Uses Limetech plugin php to perform this function
+$dropbox_remoteplg = shell_exec("/usr/local/sbin/plugin check dropbox.plg");
+
+//Determine versions of Dropbox application and CLI script
+$dropbox_appver = shell_exec("cat /usr/local/dropbox/.dropbox-dist/VERSION");
+$dropbox_cliver = shell_exec("grep \"part of nautilus-dropbox\" /usr/local/sbin/dropbox.py | awk '{print $8}'| sed '$ s/.$//'");
+
+?>
+
+<html>
+<head></head>
+<body>
+
+<div style="width: 49%; float:left; border: 0px solid black;">
+  <div id="title">
+    <span class="left">Status:&nbsp;<img src='/plugins/dropbox/device_status.png'>
+      <?if ($dropbox_installed=="yes"):?>
+        <?if ($dropbox_running=="yes"):?>
+            <?if (!empty($actlink)):?>
+              <!-- actlink contains a value, display text as hyperlink -->
+              <span class="green"><b><a href="<?=$actlink;?>" style="color: orange; text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" title="Click here to open activation link in new page. Then come back here and refresh page to see status." target="_blank"><?=$status;?>&nbsp;&nbsp;[Click to open link in new page]</a></b></span>
+            <?else:?>
+              <!-- display regular status text -->
+              <span class="green"><b><?=$status;?></b></span>
+            <?endif;?>
+        <?else:?>
+          <!-- say not running -->
+          <span class="red"><b><?=$status;?></b></span>
+        <?endif;?>
+      <?else:?>
+        <span class="red"><b>NOT INSTALLED</b></span>
+      <?endif;?>
+    </span>
+  </div>
+
+  <?if ($dropbox_installed=="yes"):?>
+    <div style="border: 0px solid black;">
+      <span class="left">
+        <table>
+        <colgroup>
+          <col span="1" style="width: 25%;">
+          <col span="1" style="width: 25%;">
+          <col span="1" style="width: 40%;">
+        </colgroup>
+        <tr>
+          <td>Dropbox Application Version:</td>
+          <td><span class="green-text"><b>v<?=$dropbox_appver?></b></span></td>
+        </tr>
+        <tr>
+          <td>Dropbox CLI Script Version:</td>
+          <td><span class="green-text"><b>v<?=$dropbox_cliver?></b></span></td>
+        </tr>
+        </table>
+	  </span>
+    </div>
+  <?endif;?>
+
+  <br></br>
+
+  <div style="border: 0px solid black;">
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td>Plugin</td>
+        <td>Local Version</td>
+        <td>Online Version</td>
+      </tr>
+      <tr style="font-weight:bold; background:#FFFFFF;">
+        <td>Dropbox Plugin</td>
+        <td>
+          <span class="green-text"><?=$dropbox_localplg?></span>
+        </td>
+        <td>
+          <span class="green-text"><?=$dropbox_remoteplg?></span>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <br></br>
+
+  <div>
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td colspan="2">Control</td>
+      </tr>
+    <?if ($dropbox_installed=="yes"):?>
+      <?if ($dropbox_running=="yes"):?>
+        <tr>
+        <td width="30%">
+          <form name="dropbox_start_stop" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.dropbox stop">
+            <input type="submit" name="runCmd" value="Stop">
+          </form>
+        </td>
+        <td>Stop Dropbox Daemon</td>
+        </tr>
+        <tr>
+        <td width="30%">
+          <form name="dropbox_restart" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.dropbox restart">
+            <input type="submit" name="runCmd" value="Restart">
+          </form>
+        </td>
+        <td>Restart Dropbox Daemon</td>
+        </tr>
+      <?else:?>
+        <tr>
+        <td width="30%">
+          <form name="dropbox_start" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.dropbox buttonstart">
+            <input type="submit" name="runCmd" value="Start">
+          </form>
+        </td>
+        <td>Start Dropbox Daemon</td>
+        </tr>
+      <?endif;?>
+    <?else:?>
+        <tr>
+      <td width="30%">
+        <form name="dropbox_install" method="POST" action="/update.htm" target="progressFrame">
+          <input type="hidden" name="cmd" value="/etc/rc.d/rc.dropbox install">
+          <input type="submit" name="runCmd" value="Install">
+        </form>
+      </td>
+      <td>Install Dropbox Application</td>
+      </tr>
+    <?endif;?>
+    </table>
+  </div>
+
+  <br></br>
+
+  <br></br>
+  <br></br>
+</div>
+
+<div style="width: 49%; float:right; border: 0px solid black;">
+  <div id="title">
+    <span class="left">Configuration:&nbsp;<img src='/plugins/dropbox/new_config.png'></span>
+  </div>
+  <form name="dropbox_settings" method="POST" action="/update.htm" target="progressFrame" onsubmit="validateForm();">
+    <input type="hidden" name="cmd" value="/etc/rc.d/rc.dropbox">
+    <table class="settings">
+      <tr>
+        <td>Enable Dropbox Service:</td>
+        <td>
+          <select name="arg1" id="arg1" size="1">
+            <?=mk_option($dropbox_cfg['SERVICE'], "disable", "No");?>
+            <?=mk_option($dropbox_cfg['SERVICE'], "enable", "Yes");?>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td>Dropbox Database Directory:</td>
+        <td><input type="text" name="arg2" id="arg2" maxlength="60" value="<?=$dropbox_cfg['DROPBOXDBDIR'];?>"></td>
+      </tr>
+      <tr>
+        <td>Dropbox Data Directory:</td>
+        <td><input type="text" name="arg3" id="arg3" maxlength="60" value="<?=$dropbox_cfg['DROPBOXDIR'];?>"></td>
+      </tr>
+    </table>
+    <div align="center">
+      <hr size="3" align="center" width="75%" color="grey" style="margin-top:20px;margin-bottom:18px">
+      <input type="submit" name="runCmd" value="Apply"><button type="button" onClick="done();">Done</button>
+    </div>
+  </form>
+  <br />
+</div>
+
+<script type="text/javascript">
+function validateForm() {
+  document.getElementById('arg2').disabled = false;
+  document.getElementById('arg3').disabled = false;
+
+}
+
+function checkRUNNING(form) {
+  if ("<?=$dropbox_running;?>" == "yes") {
+    form.arg2.disabled = true;
+    form.arg3.disabled = true;
+  }
+}
+
+checkRUNNING(document.dropbox_settings);
+</script>
+
+</body>
+</html>
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/etc/rc.d/rc.&name;" Mode="0770">
+<INLINE>
+<![CDATA[
+#!/bin/bash
+# start|stop|restart|enable|disable|install|buttonstart|updateplg|getver|chk4symlinks dropbox.
+
+dropbox_start()
+{
+  # no-op if not enabled
+  if [ $SERVICE != "enable" ]; then
+    echo "Service is not enabled!"
+    sleep 1
+    return
+  fi
+
+  # no-op if already running
+  if [ -f /var/run/dropbox/dropbox.pid ]; then
+    echo "Dropbox daemon already running!"
+    sleep 1
+    return
+  fi
+
+  # if not installed yet, call install function
+  if [[ ! -d "/usr/local/dropbox/.dropbox" || ! -d "$DROPBOXDBDIR" ]]; then
+    dropbox_install
+  fi
+
+  echo "Starting Dropbox..."
+  sleep 1
+
+  sudo -u nobody HOME=/usr/local/dropbox /usr/local/sbin/dropbox.py start > /dev/null 2>&1
+
+  TIMER=0
+  while [ ! -e "$DROPBOXDBDIR/dropbox.pid" ]; do
+    sleep 1
+    let TIMER=$TIMER+1
+    if [ $TIMER -gt 10 ]; then
+      echo -n "dropbox.pid not created, assuming dropbox daemon failed to start successfully"
+      break
+    fi
+  done
+  # assume dropbox daemon started & copy pid to /var/run/dropbox
+  cp "$DROPBOXDBDIR/dropbox.pid" /var/run/dropbox/dropbox.pid  
+
+  echo "... OK"
+  sleep 1
+}
+
+dropbox_stop()
+{
+  # no-op if already stopped
+  if [ ! -f /var/run/dropbox/dropbox.pid ]; then
+    return
+  fi
+
+  echo "Stopping Dropbox..."
+  sleep 1
+
+  kill $(cat /var/run/dropbox/dropbox.pid)
+  sleep 3
+
+  PID=$(ps -ef | grep dropbox-dist | grep -v grep | awk '{print $2}');
+  test "$PID" != "" && kill -9 $PID
+  sleep 1
+
+  # remove copy of pid created during start
+  rm -f /var/run/dropbox/dropbox.pid
+
+
+  echo "... OK"
+  sleep 1
+}
+
+dropbox_status() {
+  # this can be called from command for diag purposes, and is also called from plugin webgui to feedback status, eg. running, not installed, idle, downloading etc.
+  sudo -u nobody HOME=/usr/local/dropbox /usr/local/sbin/dropbox.py status
+}
+
+dropbox_cmd() {
+  # this can be called from command line for diag purposes
+  if [[ ! -z $1 ]]; then
+    sudo -u nobody HOME=/usr/local/dropbox /usr/local/sbin/dropbox.py $1 $2
+  else
+    echo "usage $0 cmd {dropboxcommand}.     eg. $0 cmd help"
+  fi
+}
+
+dropbox_restart()
+{
+  dropbox_stop
+  dropbox_start
+}
+
+dropbox_buttonstart()
+{
+  CONFIG="/boot/config/plugins/dropbox/dropbox.cfg"
+  if [ -f $CONFIG ]; then
+    sed -i "s/"disable"/"enable/"" $CONFIG
+	SERVICE=enable
+    dropbox_start
+  fi
+}
+
+write_config()
+{
+  echo "# dropbox configuration:" > /boot/config/plugins/dropbox/dropbox.cfg
+  echo "SERVICE=\"$SERVICE\"" >> /boot/config/plugins/dropbox/dropbox.cfg
+  echo "DROPBOXDBDIR=\"$DROPBOXDBDIR\"" >> /boot/config/plugins/dropbox/dropbox.cfg
+  echo "DROPBOXDIR=\"$DROPBOXDIR\"" >> /boot/config/plugins/dropbox/dropbox.cfg
+}
+
+dropbox_change_settings()
+{
+  #nb. when passing params from enable/disable functions, params will take new numbering. ie. $2 in enable will become the first ($1) param here, and so on
+  DROPBOXDBDIR="$1"
+  DROPBOXDIR="$2"
+}
+
+dropbox_enable()
+{
+  echo "Applying Settings ($1) ..."
+  sleep 2
+  SERVICE=$1 #enable
+  dropbox_change_settings $2 $3
+  write_config
+  dropbox_install
+  dropbox_restart
+  echo "... OK"
+  sleep 1
+}
+
+dropbox_disable()
+{
+  echo "Applying Settings ($1) ..."
+  sleep 2
+  dropbox_stop
+  SERVICE=$1 #disable
+  dropbox_change_settings $2 $3
+  write_config
+  echo "... OK"
+  sleep 1
+}
+
+dropbox_install()
+{
+  echo "Installing Dropbox..."
+  sleep 1
+
+  #If dirs configured in plugin webgui do not exist, create them, set their permissions to rwxrwxr-x and ownership to nobody
+  if [ ! -d "$DROPBOXDBDIR" ]; then
+    mkdir $DROPBOXDBDIR
+	chown -R nobody:users $DROPBOXDBDIR
+	chmod -R 0775 $DROPBOXDBDIR
+  fi
+  if [ ! -d "$DROPBOXDIR" ]; then
+    mkdir $DROPBOXDIR
+    chown -R nobody:users $DROPBOXDIR
+    chmod -R 0775 $DROPBOXDIR
+  fi
+
+  #Recreate symlinks in dropbox "home" location to real dirs set via plugin webgui and created above
+  #rm -f /usr/local/dropbox/.dropbox
+  #ln -s $DROPBOXDBDIR /usr/local/dropbox/.dropbox
+  #rm -f /usr/local/dropbox/Dropbox
+  #ln -s $DROPBOXDIR /usr/local/dropbox/Dropbox
+
+  #If dropbox application dirs do not exist, create them, set their permissions to rwxrwxr-x and ownership to nobody
+  #on the other hand, if they do exist, assume this install function has been called at least once which could only occur if the user had
+  #pressed the install button and later stopped and changed the locations of where they wanted the data to reside from the webgui.  in which case
+  #try to unmount the existing bind mount points as otherwise the subsequent install will fail when it comes to creating new bind mountpoints to the 
+  #new directories.
+  if [ ! -d "/usr/local/dropbox/.dropbox" ]; then
+    mkdir /usr/local/dropbox/.dropbox
+    chown nobody:users /usr/local/dropbox/.dropbox/
+    chmod -R 0775 /usr/local/dropbox/.dropbox
+  else
+    umount /usr/local/dropbox/.dropbox
+  fi
+  if [ ! -d "/usr/local/dropbox/Dropbox" ]; then
+    mkdir /usr/local/dropbox/Dropbox
+    chown nobody:users /usr/local/dropbox/Dropbox
+    chmod -R 0775 /usr/local/dropbox/Dropbox
+  else
+    umount /usr/local/dropbox/Dropbox
+  fi
+
+  #check and create if missing a bind mount point for dropbox application directories to user specified directories defined in webgui
+  mountpoint -q /usr/local/dropbox/.dropbox || mount -o bind "$DROPBOXDBDIR" /usr/local/dropbox/.dropbox
+  mountpoint -q /usr/local/dropbox/Dropbox || mount -o bind "$DROPBOXDIR" /usr/local/dropbox/Dropbox
+
+  echo "... OK"
+  sleep 1
+}
+
+dropbox_chk4symlinks()
+{
+# Check for symlink in Dropbox Database Directory.  eg. /mnt/disk1/.dropbox/.dropbox -> /mnt/disk1/.dropbox
+if [ -L $DROPBOXDBDIR/$(basename $DROPBOXDBDIR) ]; then   #Found, now we need to canonicalize to see if it points to itself
+  REALFILE=$(readlink $DROPBOXDBDIR/$(basename $DROPBOXDBDIR))
+  if [ $REALFILE = $DROPBOXDBDIR ]; then  #Is $REALFILE = to $DROPBOXDBDIR?
+    # Yes, the symlink is recursive, nuke it
+    rm -f $DROPBOXDBDIR/$(basename $DROPBOXDBDIR)
+  fi
+fi
+# Check for symlink in Dropbox Data Directory.  eg. /mnt/disk1/Dropbox/Dropbox -> /mnt/disk1/Dropbox
+if [ -L $DROPBOXDIR/$(basename $DROPBOXDIR) ]; then   #Found, now we need to canonicalize to see if it points to itself
+  REALFILE=$(readlink $DROPBOXDIR/$(basename $DROPBOXDIR))
+  if [ $REALFILE = $DROPBOXDIR ]; then  #Is $REALFILE = to $DROPBOXDIR?
+    # Yes, the symlink is recursive, nuke it
+    rm -f $DROPBOXDIR/$(basename $DROPBOXDIR)
+  fi
+fi
+}
+
+# read our configuration
+source /boot/config/plugins/dropbox/dropbox.cfg
+
+case "$1" in
+  'start')
+    dropbox_start
+  ;;
+  'stop')
+    dropbox_stop
+  ;;
+  'restart')
+    dropbox_restart
+  ;;
+  'enable')
+	dropbox_enable $1 $2 $3
+  ;;
+  'disable')
+    dropbox_disable $1 $2 $3
+  ;;
+  'install')
+    dropbox_install
+  ;;  
+  'buttonstart')
+    dropbox_buttonstart
+  ;;
+  'status')
+    dropbox_status
+  ;;  
+  'cmd')
+    dropbox_cmd $2 $3
+  ;;  
+  'chk4symlinks')
+    dropbox_chk4symlinks
+  ;; 
+  *)
+    echo "usage $0 start|stop|restart|enable|disable|install|buttonstart|status|cmd <argv0>|chk4symlinks <argv0>"
+esac
+]]>
+</INLINE>
+</FILE>
+
+<!-- event handler to start dropbox when array online (if dropbox service set to enable) -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/disks_mounted" Mode="0770">
+<INLINE>
+#!/bin/bash
+# include our config vars and check if the service is set to enable.  if so, bring it up
+source /boot/config/plugins/&name;/&name;.cfg
+[[ $SERVICE = "enable" ]] &amp;&amp; /etc/rc.d/rc.&name; start
+</INLINE>
+</FILE>
+
+<!-- event handler to stop dropbox when unmounting disks -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/unmounting_disks" Mode="0770">
+<INLINE>
+#!/bin/bash
+/etc/rc.d/rc.&name; stop
+</INLINE>
+</FILE>
+
+<FILE Mode="0770" Run="/bin/bash">
+<INLINE>
+#!/bin/bash
+if [ "&devplugin;" == "true" ]; then
+  if [ -f /boot/config/plugins/&name;.php ]; then
+    rm -f /usr/local/emhttp/plugins/&name;/&name;.php
+    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+  else
+    mv /usr/local/emhttp/plugins/&name;/&name;.php /boot/config/plugins/&name;.php
+    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+  fi
+  if [ -f /boot/config/plugins/rc.&name; ]; then
+    rm -f /etc/rc.d/rc.&name;
+    ln -s /boot/config/plugins/rc.&name; /etc/rc.d/rc.&name;
+  else
+    mv /etc/rc.d/rc.&name; /boot/config/plugins/rc.&name;
+    ln -s /boot/config/plugins/rc.&name; /etc/rc.d/rc.&name;
+  fi
+fi
+</INLINE>
+</FILE>
+
+</PLUGIN>
