@@ -5,8 +5,8 @@
 <!ENTITY author     "overbyrn">
 <!ENTITY version    "2015.02.26">
 <!ENTITY category   "Network Services">
-<!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
-<!ENTITY packageURL "https://github.com/overbyrn/unraid-v6-plugins/releases/download/&name;">
+<!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-plugins/master/&name;.plg">
+<!ENTITY packageURL "https://github.com/overbyrn/unraid-plugins/releases/download/&name;">
 ]>
 
 <PLUGIN  name="&name;"
@@ -23,7 +23,7 @@ This Plugin extends the core SSH support built into unRAID v6.
 Plugin file locations:
  /boot/config/plugins/ssh.plg      			                            # this file
 
- /boot/config/plugins/ssh/putty-0.63-x86_64-1_fs.tgz                    # putty package (required for puttygen)
+ /boot/config/plugins/ssh/putty-0.64-<plat>-1rj.txz                     # putty package (required for puttygen)
  /boot/config/plugins/ssh/ssh.cfg                                       # non-volatile configuration
  /boot/config/plugins/ssh/read_me.txt                                   # Help File
 
@@ -40,45 +40,8 @@ Plugin file locations:
 
 -->
 
-<FILE Name="/boot/packages/putty-0.63-x86_64-1_fs.tgz" Run="upgradepkg --install-new">
-<URL>&packageURL;/putty-0.63-x86_64-1_fs.tgz</URL>
-</FILE>
-
 <FILE Name="/boot/config/plugins/&name;/read_me.txt">
-<INLINE>
-<![CDATA[
-Create file called "authorized_keys" in this directory and paste into it the contents of a public key from a keypair
-
-To do this, you must have created a public and private key-pair.  Use the following steps to do this:
-
-From command line (telnet / putty)
-
-1. Type "ssh-keygen -t rsa -f /boot/config/plugins/ssh/<USERNAME>/.ssh/id_rsa"
-   NB.  replace "someuser" with the name of the user.
-   
-2. When prompted, type a passphrase if you wish for additional security for the private key.  Press enter if not for no passphrase
-
-3. Create a copy the public key into the same location and call it "authorized_keys".
-   eg.  cp /boot/config/plugins/ssh/<USERNAME>/.ssh/id_rsa.pub /boot/config/plugins/ssh/<USERNAME>/.ssh/authorized_keys
-   
-Verify everything has been created correctly.
-
-Upon restarting SSH, the plug-in will look for (and find) authorized_keys and copy this file to the users home directory.  eg.  /home/someuser/.ssh/authorized_keys
-
-----------------------------------------------------------
-
-The private part of the key is "id_rsa".  You must take this to the system you intend to connect *from*.  If you intend to use Putty to connect, then you *MUST* first convert the private key from standard OpenSSH format to Putty compatible format.
-
-A copy of PUTTYGEN for UnRAID has been included.  To convert the private key, follow these steps:
-
-From command line (telnet / putty):
-
-1. Type "/usr/bin/puttygen /boot/config/plugins/ssh/<USERNAME>/.ssh/id_rsa -o /boot/config/plugins/ssh/<USERNAME>/.ssh/id_rsa.ppk
-2. In Putty, create an entry to your UnRAID server and in "Connection -> SSH -> Auth" section of Putty, browse for the file you created (id_rsa.ppk).
-
-Verify you are able to login successfully with the private key.
-]]>
-</INLINE>
+<URL>&packageURL;/read_me.txt</URL>
 </FILE>
 
 <FILE Name="/boot/config/plugins/&name;/&name;.cfg">
@@ -102,6 +65,27 @@ fi;
 if [ -f /etc/rc.d/rc.&name; ]; then
   rm -f /etc/rc.d/rc.&name;
 fi;
+
+if [ ! -f /boot/config/plugins/&name;/putty-0.64-$(/usr/bin/uname -m)-1rj.txz ]; then
+  NETCHECK=$(timeout 5 wget --no-check-certificate -qST4 --spider &pluginURL; 2>&amp;1 | grep HTTP | tail -1 | cut -f1 | awk '{print $NF}')
+  if [ "$NETCHECK" == "OK" ]; then
+    wget --no-check-certificate -q -P /boot/config/plugins/&name; --no-check-certificate &packageURL;/putty-0.64-$(/usr/bin/uname -m)-1rj.txz
+  else
+    exit 1
+  fi
+fi
+/sbin/upgradepkg --install-new /boot/config/plugins/&name;/putty-0.64-$(/usr/bin/uname -m)-1rj.txz
+</INLINE>
+</FILE>
+
+<!--
+The 'remove' script.
+-->
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+rm -r /usr/local/emhttp/plugins/&name;
+rm -f /etc/rc.d/rc.&name;
+rm -rf /boot/config/plugins/&name;
 </INLINE>
 </FILE>
 
@@ -622,7 +606,6 @@ ssh_disable()
   echo "... OK"
   sleep 1
 }
-
 
 # read our configuration
 source /boot/config/plugins/ssh/ssh.cfg
