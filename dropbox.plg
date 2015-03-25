@@ -138,6 +138,12 @@ iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAACXBIWXMAAC4jAAAuIwF4pT92AAAJdklE
 </INLINE>
 </FILE>
 
+<FILE Name="/usr/local/emhttp/plugins/&name;/icons/&name;.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAC4jAAAuIwF4pT92AAACgElEQVR42pWTTUhUURiGn3vvzNyfmclxUlL7N4lokiBaREElKRRBSUEuwpAiySIQxCIodBgK2kXRygypsEXQJhCiFiGBmEWEZWCpCDYLifFn/s+ZO7dFNWMUUS+8i3POdx74znk/xaEbAAUUCLv5J3VJBxwAF4Cy791Gtm++iBVZj6Iof73rOA6p9JQyOnbdGdg6rkBI43T9A0qD6/gfzcWm6HnerAYZ8yLUEIvCLLh65SKrKxKFdcWKDOuqEr/UCHVLkDGvKwaQkCZ2No/LlSdyaqQnVdNkmYjjdYOPmcouv7ahYU+5hud028wdTt6uQ+Y00lKNASoASWESFxa9kaEbsZpmdx7PMhvfp1W7TwxuazhYmsfnzuN5PLnqbP3dS++JC4uEMCgAUsIgKQwaO/a3h+K95SZsLYOgDmv9cGANVHmho3r+3vPDV3aSFAbp7BLAfCZAXPhI5gwytjY0Cdlc8b2kDRNfQUCelDSJCx/zmUARgArC0bkffnpjItDyNgo3h+HTHLyJQuQFjM7CrclAS+2zqwMIRwdNKQI8Hhtdz9HU1dgeG3miKGADnxfgRRSEAwpwRLzrH919+Si6nsPtyRUBhiUxTYlbz9Pdv292By9rq2C5BZUlsGsDJHcxyJm+Rly6g2lKDOsXQA7TJzF9Eq9fvjp3IdTG64dSIyNcZM7LkUd9xy5sweuXhTrDkoUoY3oFprUkZj4IP60/tGn4AwnHy8zCXvxlNt87+y6X+nMWKtNgj+Pz/x7lKBUAlATFb2fp+BRUplWHVsnHV50sxqZRVBtVK1r74aV7imqzEJvm43CnQ6tUfo7zSsJWFAJm4Wv/rDTkq2D+C10pgG/ykgrKmHBekwAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
 <FILE Name="/usr/local/emhttp/plugins/&name;/device_status.png" Type="base64">
 <INLINE>
 iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFJSURBVDiNtZI9awJBEIafVctUSv6KvUUCEpPiDhsFsT2CVcSt5OqzlWBvKzb5QDCCvX8lYL2zsm4alTtRMYRM987OPLzzssp7z1+qcKo5m81u8/n8s1KqDuC9nzjnXqvV6vdVAOecds69pFoxcAN0TwKm0+kSWG+326Rer69EpA2glLrbOfgC2kB3MpmUc7mcBophGFZyACKiRYTNZqN3uiQiBEGwCIJgISKISAnAWquNMYiIPjhoNBorINzbMsZkbKZ1s9kM028FgNFo9AE8AJ9RFNVEJANI6+PZAkAURbVzC8f6eLYAMBgMyt57DRS11pVLgCRJlsBaKZX0er3VIURrLcaYfYiZpbQ2xmhrbTbEfr+fCeaSgziOM4Grf/nKnU7nJHU4HKqrACIy997fp3tKqfmp2bMntFqtN+BxJ9/H4/HTrwDX1g/Ee8aNyc3z/wAAAABJRU5ErkJggg==
@@ -169,7 +175,7 @@ This Plugin installs and provides Dropbox support for unRAID v6.
 <![CDATA[
 Menu="NetworkServices"
 Title="Dropbox"
-Icon="&name;.png"
+Icon="dropbox.png"
 ---
 <?PHP
 $dropbox_cfg = parse_ini_file( "/boot/config/plugins/dropbox/dropbox.cfg");
