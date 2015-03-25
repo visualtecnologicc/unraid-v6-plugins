@@ -3,8 +3,9 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name       "dropbox">
 <!ENTITY author     "overbyrn">
-<!ENTITY version    "2014.09.18">
+<!ENTITY version    "2015.03.25">
 <!ENTITY category   "Network Services">
+<!ENTITY pluginDIR   "/boot/config/plugins/&name;">
 <!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
 <!ENTITY packageURL "https://github.com/overbyrn/unraid-v6-plugins/releases/download/&name;">
 <!ENTITY devplugin  "false">
@@ -14,10 +15,12 @@
          author="&author;"
          version="&version;"
          category="&category;"
-         pluginURL="&pluginURL;">
+		 pluginDIR="&pluginDIR;"
+         pluginURL="&pluginURL;"
+		 packageURL="&packageURL;">
 
 <!--
-Copyright 2013, Rich Manton (overbyrn)
+Copyright 2015, Rich Manton (overbyrn)
 
 This Plugin installs and provides Dropbox support for unRAID.
 
@@ -40,6 +43,10 @@ Plugin file locations:
  /var/run/dropbox/dropbox.pid                                       # run-time pid file
  
 -->
+
+<FILE Name="&pluginDIR;/dropbox.py" >
+<URL>-q --no-check-certificate &packageURL;/dropbox.py</URL>
+</FILE>
 
 <FILE Name="/boot/config/plugins/&name;/&name;.cfg">
 <INLINE>
@@ -75,45 +82,27 @@ source /boot/config/plugins/&name;/&name;.cfg
 #create dropbox application directory
 [[ ! -d /usr/local/&name; ]] &amp;&amp; mkdir -p /usr/local/&name;
 
-#install dropbox from local copy, download from dropbox web site if copy not present in plugin directory
-#dropbox app is in two parts:
-#1. the main application
-if [[ ! -e /boot/config/plugins/&name;/dropbox-lnx.x86_64.tar.gz ]]; then
+#install dropbox from local copy, download from github if copy not present in plugin directory
+
+APPNAME=dropbox-lnx.x86_64.tar.gz
+if [[ ! -e /boot/config/plugins/&name;/$APPNAME ]]; then
   echo "Downloading Dropbox application..."
-  #wget -nv -P /tmp -O dropbox-lnx.x86_64.tar.gz "https://www.dropbox.com/download?plat=lnx.x86_64"
-  #wget -P /tmp -O dropbox-lnx.x86_64.tar.gz "https://www.dropbox.com/download?plat=lnx.x86_64"
-  curl -L -o /tmp/dropbox-lnx.x86_64.tar.gz "https://www.dropbox.com/download?plat=lnx.x86_64"
-  if [ ! -f /tmp/dropbox-lnx.x86_64.tar.gz ]; then
+  wget -q --no-check-certificate -O /tmp/$APPNAME -L &packageURL;/$APPNAME 2>/dev/null
+  if [ ! -f /tmp/$APPNAME ]; then
     echo "** ERROR: something went wrong, Dropbox application did not download as expected. Plugin installation failed! **"
     exit 1
   fi
   echo "Extracting Dropbox..."
-  tar -C /usr/local/dropbox -zxvf /tmp/dropbox-lnx.x86_64.tar.gz 2>/dev/null
+  tar -C /usr/local/dropbox -zxvf /tmp/$APPNAME 2>/dev/null
   echo "Saving local copy of Dropbox application to plugin directory..."
-  mv -f /tmp/dropbox-lnx.x86_64.tar.gz /boot/config/plugins/&name;/dropbox-lnx.x86_64.tar.gz 2>/dev/null
+  mv -f /tmp/$APPNAME &pluginDIR;/$APPNAME 2>/dev/null
 else
   echo "Extracting Dropbox..."
-  tar -C /usr/local/dropbox -zxvf /boot/config/plugins/&name;/dropbox-lnx.x86_64.tar.gz 2>/dev/null
+  tar -C /usr/local/dropbox -zxvf &pluginDIR;/$APPNAME 2>/dev/null
 fi
 
-#2. python CLI wrapper
-if [[ ! -e /boot/config/plugins/&name;/dropbox.py ]]; then
-  echo "Downloading Dropbox python CLI wrapper script..."
-  #wget -nv -q -P /tmp -O dropbox.py https://www.dropbox.com/download?dl=packages/dropbox.py
-  #wget -P /tmp -O dropbox.py "https://www.dropbox.com/download?dl=packages/dropbox.py"
-  curl -L -o /tmp/dropbox.py "https://www.dropbox.com/download?dl=packages/dropbox.py"
-  if [ ! -f /tmp/dropbox.py ]; then
-    echo "** ERROR: something went wrong, Dropbox python CLI script did not download as expected. Plugin installation failed! **"
-    exit 1
-  fi
-  echo "Installing Dropbox python CLI wrapper script..."
-  cp -f /tmp/dropbox.py /usr/local/sbin/dropbox.py
-  echo "Saving local copy of Dropbox python CLI wrapper script to plugin directory..."
-  mv -f /tmp/dropbox.py /boot/config/plugins/&name;/dropbox.py
-else
-  echo "Installing Dropbox python CLI wrapper script..."
-  cp -f /boot/config/plugins/&name;/dropbox.py /usr/local/sbin/dropbox.py
-fi
+#install Dropbox CLI script (used as wrapper to control main dropbox python app)
+cp &pluginDIR;/dropbox.py /usr/local/sbin/dropbox.py
 
 #set ownership and permission of dropbox application
 echo "Setting permissions on Dropbox application"
@@ -171,7 +160,7 @@ iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29m
 <INLINE>
 **&name; Plugin**
 
-This Plugin installs and provides Dropbox support for unRAID.
+This Plugin installs and provides Dropbox support for unRAID v6.
 </INLINE>
 </FILE>
 
@@ -218,13 +207,9 @@ if (is_dir($dropbox_cfg['DROPBOXDBDIR'])) {
 #shell_exec("/etc/rc.d/rc.dropbox chk4symlinks");
 
 $status = exec( "sudo -u nobody HOME=/usr/local/dropbox /usr/local/sbin/dropbox.py status" );
-switch ($status) {
-  case "Waiting to be linked to a Dropbox account...":
-    $actlink = exec( "sudo -u nobody HOME=/usr/local/dropbox /usr/local/sbin/dropbox.py start" );
-    break;
-  case "Dropbox isn't running!":
-    break;
-  }
+if (strpos($status,'linked') !== false) {
+    $actlink = exec( "sudo -u nobody HOME=/usr/local/dropbox /usr/local/sbin/dropbox.py start | cut -d$'\n' -f2" );
+}
 
 //Get local plugin file version
 $dropbox_localplg = shell_exec('grep "<\!ENTITY version" /boot/config/plugins/dropbox.plg | cut -d\" -f2');
