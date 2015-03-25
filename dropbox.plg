@@ -126,6 +126,7 @@ rm -f /etc/rc.d/rc.&name;
 rm -rf /boot/config/plugins/&name;
 rm -rf /usr/local/&name;
 rm -f /usr/local/sbin/dropbox.py
+rm -rf /var/run/&name;
 </INLINE>
 </FILE>
 
@@ -313,7 +314,7 @@ $dropbox_cliver = shell_exec("grep \"part of nautilus-dropbox\" /usr/local/sbin/
         </tr>
       <?endif;?>
     <?else:?>
-        <tr>
+      <tr>
       <td width="30%">
         <form name="dropbox_install" method="POST" action="/update.htm" target="progressFrame">
           <input type="hidden" name="cmd" value="/etc/rc.d/rc.dropbox install">
