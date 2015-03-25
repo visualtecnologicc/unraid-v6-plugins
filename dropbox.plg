@@ -14,10 +14,7 @@
 <PLUGIN  name="&name;"
          author="&author;"
          version="&version;"
-         category="&category;"
-		 pluginDIR="&pluginDIR;"
-         pluginURL="&pluginURL;"
-		 packageURL="&packageURL;">
+         category="&category;">
 
 <!--
 Copyright 2015, Rich Manton (overbyrn)
@@ -276,27 +273,6 @@ $dropbox_cliver = shell_exec("grep \"part of nautilus-dropbox\" /usr/local/sbin/
 	  </span>
     </div>
   <?endif;?>
-
-  <br></br>
-
-  <div style="border: 0px solid black;">
-    <table>
-      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
-        <td>Plugin</td>
-        <td>Local Version</td>
-        <td>Online Version</td>
-      </tr>
-      <tr style="font-weight:bold; background:#FFFFFF;">
-        <td>Dropbox Plugin</td>
-        <td>
-          <span class="green-text"><?=$dropbox_localplg?></span>
-        </td>
-        <td>
-          <span class="green-text"><?=$dropbox_remoteplg?></span>
-        </td>
-      </tr>
-    </table>
-  </div>
 
   <br></br>
 
