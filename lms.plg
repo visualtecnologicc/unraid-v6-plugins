@@ -123,20 +123,21 @@ Icon="lms.png"
 $lms_cfg = parse_ini_file("/boot/config/plugins/lms/lms.cfg");
 $lms_curinstdir = $lms_cfg['INSTALLDIR'];
 $lms_installed = is_dir( $lms_cfg['INSTALLDIR']) ? "yes" : "no";
+$lms_localapp = "";
+$lms_remoteapp = "";
 
 //Get local plugin file version
-$dropbox_localplg = shell_exec('grep "<\!ENTITY version" /boot/config/plugins/lms.plg | cut -d\" -f2');
+$lms_localplg = shell_exec('grep "<\!ENTITY version" /boot/config/plugins/lms.plg | cut -d\" -f2');
 
 //Get remote plugin file version.  Uses Limetech plugin php to perform this function
-$dropbox_remoteplg = shell_exec("/usr/local/sbin/plugin check lms.plg");
-
-$lms_localapp = shell_exec("/etc/rc.d/rc.lms getver local");
-$lms_remoteapp = shell_exec("/etc/rc.d/rc.lms getver remote");
+$lms_remoteplg = shell_exec("/usr/local/sbin/plugin check lms.plg");
 
 if ($lms_installed=="yes") {
   $lms_running = file_exists("/var/run/lms/lms.pid") ? "yes" : "no";
   $lms_datasize = shell_exec ( "/etc/rc.d/rc.lms storagesize $lms_cfg[INSTALLDIR]" );
   $lms_datacheck = shell_exec ( "/etc/rc.d/rc.lms datacheck" );
+  $lms_localapp = shell_exec("/etc/rc.d/rc.lms getver local");
+  $lms_remoteapp = shell_exec("/etc/rc.d/rc.lms getver remote");
 }
 $controls_exist = "false";
 $updates_exist = "false";
@@ -175,28 +176,20 @@ $updates_exist = "false";
   <div style="border: 0px solid black;">
     <table>
       <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
-        <td>Package/Plugin</td>
-        <td>Local Version</td>		
-        <td>Online Version</td>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td colspan="2" style="width:300px">Version Information</td>
       </tr>
       <tr style="font-weight:bold; background:#FFFFFF;">
         <td>LMS Application</td>
         <td>
-          <?if ($lms_localapp != "Unknown"):?>
-            <span class="green-text"><?=$lms_localapp?></span>
-          <?else:?>
-            <span class="red-text">UNKNOWN</span>
-          <?endif;?>
-        </td>
-        <td>
-          <?if ($lms_remoteapp != "Unknown"):?>
-            <?if ($lms_cfg['BRANCH']=="stable"):?>
-              <span class="green-text"><a href="http://downloads.slimdevices.com" style="color: green; text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" target="_blank"><span class="green-text"><?=$lms_remoteapp?></span></a></span>
+          <?if ($lms_installed=="yes"):?>
+            <?if ($lms_localapp != "Unknown"):?>
+              <span class="green-text"><?=$lms_localapp?></span>
             <?else:?>
-              <span class="green-text"><a href="http://downloads.slimdevices.com/nightly/?ver=7.8" style="color: green; text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" target="_blank"><span class="green-text"><?=$lms_remoteapp?></span></a></span>
-            <?endif;?>                   
+              <span class="red-text">UNKNOWN</span>
+            <?endif;?>
           <?else:?>
-            <span class="red-text">UNKNOWN</span>
+            <span class="red-text">Not Installed</span>       
           <?endif;?>
         </td>
       </tr>
@@ -205,24 +198,6 @@ $updates_exist = "false";
         <td>
           <?if ($lms_localplg != "Unknown"):?>
               <span class="green-text"><?=$lms_localplg?></span>
-          <?else:?>
-            <span class="red-text">UNKNOWN</span>
-          <?endif;?>
-        </td>
-        <td>
-          <?if ($lms_remoteplg != "Unknown"):?>
-            <?if ($lms_commithist == "URL could not be retrieved"):?>  <!-- we didnt obtain the commit history for some reason, so just display the version -->
-              <span class="green-text"><?=$lms_remoteplg?></span>
-            <?else:?>
-              <span class="green-text">
-                <?=$lms_remoteplg?>
-                <a href="<?=$lms_commithist?>" style="color: green; text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" title="GitHub Commit History" target="_blank">
-                  <span class="green">
-                    <b>[Commit Log]</b>
-                  </span>
-                </a>
-              </span>
-            <?endif;?> 
           <?else:?>
             <span class="red-text">UNKNOWN</span>
           <?endif;?>
@@ -297,18 +272,6 @@ $updates_exist = "false";
       <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
         <td colspan="2">Updates</td>
       </tr>
-      <?if (($lms_remoteplg != $lms_localplg) && ($lms_localplg != "Unknown") && ($lms_remoteplg != "Unknown")): ?>
-        <tr>
-        <td width="30%">
-          <form name="lms_updateplg" method="POST" action="/update.htm" target="progressFrame">
-            <input type="hidden" name="cmd" value="/etc/rc.d/rc.lms updateplg">
-            <input type="submit" name="runCmd" value="Update Plugin">
-          </form>
-        </td>
-          <td><span class="red-text">An update is available to the plugin</span></td>
-        </tr>
-        <?$updates_exist="true"?>
-      <?endif;?>
 
       <?if (($lms_remoteapp != $lms_localapp) && ($lms_localapp != "Unknown") && ($lms_remoteapp != "Unknown")): ?>
         <tr>
@@ -724,7 +687,7 @@ lms_appver()
           local FILENAME=$(wget -q http://downloads.slimdevices.com/nightly/?ver=7.8 -q -O - | grep -i LogitechMediaServer | sed -e 's/<[a-zA-Z\/][^>]*>//g' | grep logitechmediaserver-[0-9].[0-9].[0-9]-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].tgz)
           local BUILDREV=$(echo $FILENAME | awk -F\- '{print $3}' | cut -f1 -d\.)
           local VERSION="$(echo $FILENAME | awk -F\- '{print $2}') revision $BUILDREV"
-      fi    
+      fi
       if [ "$VERSION" == "" ]; then
         VERSION=Unknown
       fi
@@ -814,10 +777,6 @@ if [ "&devplugin;" == "true" ]; then
     ln -s /boot/config/plugins/rc.&name; /etc/rc.d/rc.&name;
   fi
 fi
-</INLINE>
-</FILE>
-
-rm /tmp/plugin-development
 </INLINE>
 </FILE>
 
