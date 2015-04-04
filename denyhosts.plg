@@ -51,7 +51,6 @@ Plugin file locations:
 
 <FILE Name="/boot/config/plugins/&name;/&name;.cfg">
 <INLINE>
-# denyhosts configuration
 SERVICE=disable
 WORK_DIR=/usr/local/denyhosts
 PURGE_DENY=2w
@@ -71,7 +70,7 @@ SECURE_LOG=/var/log/syslog
 HOSTS_DENY=/etc/hosts.deny
 BLOCK_SERVICE=sshd
 LOCK_FILE=/var/run/denyhosts/denyhosts.pid
-DAEMON_LOG=/var/run/denyhosts/denyhosts.out
+DAEMON_LOG=/usr/local/denyhosts/denyhosts.out
 </INLINE>
 </FILE>
 
@@ -679,7 +678,7 @@ write_config()
   echo "HOSTS_DENY=/etc/hosts.deny" >> /boot/config/plugins/denyhosts/denyhosts.cfg
   echo "BLOCK_SERVICE=sshd" >> /boot/config/plugins/denyhosts/denyhosts.cfg
   echo "LOCK_FILE=/var/run/denyhosts/denyhosts.pid" >> /boot/config/plugins/denyhosts/denyhosts.cfg
-  echo "DAEMON_LOG=/var/log/plugins/denyhosts.out  " >> /boot/config/plugins/denyhosts/denyhosts.cfg  
+  echo "DAEMON_LOG=$WORK_DIR/denyhosts.out  " >> /boot/config/plugins/denyhosts/denyhosts.cfg  
 }
 
 denyhosts_change_settings()
