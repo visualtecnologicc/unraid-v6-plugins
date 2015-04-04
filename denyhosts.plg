@@ -154,7 +154,7 @@ iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29m
 <INLINE>
 **&name; Plugin**
 
-The plugin installs DenyHosts, a log-based intrusion prevention security tool for SSH
+The plugin provides support for DenyHosts, a log-based intrusion prevention security tool for SSH
 </INLINE>
 </FILE>
 
