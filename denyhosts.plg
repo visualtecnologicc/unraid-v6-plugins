@@ -452,7 +452,6 @@ checkRUNNING(document.denyhosts_settings);
 <INLINE>
 <![CDATA[
 <?PHP
-  $logfile = "/var/log/plugins/denyhosts";
   $configfile = "/boot/config/plugins/denyhosts/denyhosts.cfg";
 
   if (empty($_SERVER['SHELL']))
@@ -461,7 +460,6 @@ checkRUNNING(document.denyhosts_settings);
     $newline = "\n";
 
   $cur_dt = date("F j\, Y h:i:s A");
-  write_log("\nStart: $cur_dt");
  
   $settings = array(
     "SERVICE",
@@ -532,7 +530,6 @@ checkRUNNING(document.denyhosts_settings);
   }
   
   $cur_dt = date("F j\, Y h:i:s A");
-  write_log("\nEnd: $cur_dt");
   
   function startdenyhosts() {
     global $newline, $log;
@@ -573,14 +570,8 @@ checkRUNNING(document.denyhosts_settings);
   function exec_log($cmd) {
     $results = exec($cmd);    
     $results = "\nCMD: $cmd \nResults: $results";
-    write_log($results);
   }
-
-  function write_log($contents) {
-    global $logfile;
-    write_string($logfile, "$contents\n", FALSE);
-  }
-    
+  
   function write_string ($file, $contents, $overwrite) {
     if (file_exists($file)) {
       if ($overwrite)
