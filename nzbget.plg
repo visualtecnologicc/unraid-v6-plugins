@@ -1,0 +1,739 @@
+<?xml version='1.0' standalone='yes'?>
+
+<!DOCTYPE PLUGIN [
+<!ENTITY name       "nzbget">
+<!ENTITY author     "overbyrn">
+<!ENTITY version    "2015.03.25">
+<!ENTITY category   "Network Services">
+<!ENTITY pluginDIR   "/boot/config/plugins/&name;">
+<!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
+<!ENTITY packageURL "https://github.com/overbyrn/unraid-v6-plugins/releases/download/&name;">
+<!ENTITY devplugin  "false">
+]>
+
+<PLUGIN  name="&name;"
+         author="&author;"
+         version="&version;"
+         category="&category;">
+
+<!--
+Copyright 2013, Rich Manton (overbyrn)
+
+This Plugin provides nzbget support for unRAID.
+
+Plugin file locations:
+ /boot/plugins/nzbget.plg                                                       # this file
+ /boot/config/plugins/nzbget/nzbget-{ver}-{plat}-{rev}.txz                      # nzbget binary application
+ /boot/packages/unrar-5.0.14-x86_64-1sl.txz                                     # package dependency (rar support)
+ /boot/packages/p7zip-9.20.1-x86_64-1sl.txz                                     # package dependency (7zip support)
+ /usr/local/emhttp/plugins/nzbget/nzbget.png                                    # plugin icon file
+ /usr/local/emhttp/plugins/nzbget/device_status.png                             # plugin webgui image file
+ /usr/local/emhttp/plugins/nzbget/new_config.png                                # plugin webgui image file
+ /usr/local/emhttp/plugins/nzbget/information.png                               # plugin webgui image file
+ /boot/config/plugins/nzbget/nzbget.cfg                                         # non-volatile configuration
+ /etc/rc.d/rc.nzbget                                                            # plugin control script
+ /usr/local/emhttp/plugins/nzbget/nzbget.page                                   # webGui page code (settings)
+ /usr/local/emhttp/plugins/nzbget/event/disks_mounted                           # script to execute for emhttp event
+ /usr/local/emhttp/plugins/nzbget/event/unmounting_disks                        # script to execute for emhttp event
+ /usr/local/nzbget                                                              # application installation location
+ /var/run/nzbget/nzbget.pid                                                     # run-time pid file
+
+-->
+
+<FILE Name="/boot/packages/unrar-5.0.14-x86_64-1sl.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/unrar-5.0.14-x86_64-1sl.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/p7zip-9.20.1-x86_64-1sl.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/p7zip-9.20.1-x86_64-1sl.txz</URL>
+</FILE>
+
+<FILE Name="/boot/config/plugins/&name;/&name;.cfg">
+<INLINE>
+SERVICE="disable"
+INSTALLDIR="/mnt/disk1/nzbget"
+PORT="6789"
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="install">
+<INLINE>
+if [ -d /usr/local/emhttp/plugins/&name; ]; then
+  rm -r /usr/local/emhttp/plugins/&name;
+fi;
+if [ -f /etc/rc.d/rc.&name; ]; then
+  rm -f /etc/rc.d/rc.&name;
+fi;
+
+#load plugin config
+source /boot/config/plugins/nzbget/nzbget.cfg
+
+# get (if necessary) and install nzbget package. ensures the plugin will always install the latest available build
+
+REMPKG=$(wget --no-check-certificate &packageURL;/nzbget_appver.txt -q -O - | cut -d: -f2)
+echo "Looking for locally saved version of $REMPKG"
+if [[ ! -e &pluginDIR;/$REMPKG ]]; then
+  echo "Local saved version does not exist, downloading $REMPKG to /tmp"
+  wget -q --no-check-certificate -O /tmp/$REMPKG -L &packageURL;/$REMPKG 2>/dev/null
+  echo "Installing package /tmp/$REMPKG..."
+  upgradepkg --install-new nzbget*%/tmp/$REMPKG
+  echo "Deleting any old builds which may be at &pluginDIR;..."
+  rm -f &pluginDIR;/nzbget*.txz
+  echo "Moving downloaded version from /tmp/$REMPKG to &pluginDIR;/$REMPKG..."
+  mv -f /tmp/$REMPKG &pluginDIR;
+else
+  echo "Found an up to date locally saved version of $REMPKG at &pluginDIR;"
+  echo "Installing package &pluginDIR;/$REMPKG..."
+  upgradepkg --install-new nzbget*%&pluginDIR;/$REMPKG
+fi
+
+# create nzbget-writable directory for pid file
+echo "Creating writable PID dir..."
+[ ! -e /var/run/nzbget ] &amp;&amp; mkdir -m 0777 /var/run/nzbget
+
+#set ownership and permission of nzbget binaries to nobody
+echo "Setting ownership/perms of nzbget binaries..."
+chown -R nobody:users /usr/local/nzbget 2>/dev/null
+chmod -R 777 /usr/local/nzbget 2>/dev/null
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+rm -r /usr/local/emhttp/plugins/&name;
+rm -f /etc/rc.d/rc.&name;
+rm -rf /boot/config/plugins/&name;
+rm -rf /usr/local/&name;
+rm -rf /usr/local/nzbget
+rm -rf /var/run/&name;
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.png" Type="base64">
+<INLINE>
+
+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
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/icons/&name;.png" Type="base64">
+<INLINE>
+
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAC4jAAAuIwF4pT92AAAC6klEQVR42n2TbWiVdRTAf/+X+9zd57nLpt1579aWa1ErenGMCoTgrllBVARyjQRXSH5altGHXhB04Yf1KcooUAtEKPAGBX0x0Fy2yilGU9yG21BxOrCmrj273ufl//z7YF6WRefj4Zzf4ZzDT1i2cXN0068HwXUhC1ABvwiVQ2yNb67V/2rcV2o6UJp66W1M1wWuZBISW2BpNYc33s5Xn7SKzRcXg2qANvrrSnb/6j4a33yW12auzYzlVAEBYGaop66l+nnDwGeePfFlm3jwizNsrQLIG5OfsN90NxC8Xlp4QYaMrdAFIQVIAVIXhFQN51s3+L3OECef67e/reumX9cAgx88dftjFN5417yllGdSElQ8spCJV013xKumO+JffVeCVlmT2mHfq6/gr8XuWgEgBWW1bfM7T3/ErkipsE6CSiEc8sJSdHyKjk9e2DSkJWglosyH7Ax66VovKCsNo149Tucpjrl/H0VrcFBJjLISACcRKXASRBKCmebkkhjzAEtHPe1CNqS6LGQ+fX1nITUoJiLFdr8AwDPpeXmbEAIrBchrzDl/UkmxrzejAQLiZPE7L2+/5PJDsKSW2DKfn+0K/PRAzrdICxBjLEoIWQF/ivmzyylgIbHYhL7sH5wxTg0wYjJsyM4qlABh8zQxh7nKxm8rEu5b2Ds3fLSTR4PrZGK3wRUMN47RpqvkVMQvuTHvbi+JsZHF2h565B5GBpnML0hLybDl4Ikq95xqplklYCJsmFmWsQwtH+Vw42im3TMRhAbiFpqVw/0TF/f+dNRSMhKg+PHxyYPvlw+vZO1EKy06ARNCoJvqIt3hViNEYCC+g1a9hr5Lu3fuOVDs/XocQNyQSbAjzStt6/j08Ttf1t6Tw/ysTjMZAtzLXenV9Kj9iO/HXy1P8d3Ubju5KfgHoCbTw02d1DsvsukRmXv+oaqLUud+HJcMDGlmg3Jx+PyRxTKJ/9OZ9lsasUrcevnK7yuv4v+Xzn8BKzMpMN6NoPUAAAAASUVORK5CYII=
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/device_status.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFJSURBVDiNtZI9awJBEIafVctUSv6KvUUCEpPiDhsFsT2CVcSt5OqzlWBvKzb5QDCCvX8lYL2zsm4alTtRMYRM987OPLzzssp7z1+qcKo5m81u8/n8s1KqDuC9nzjnXqvV6vdVAOecds69pFoxcAN0TwKm0+kSWG+326Rer69EpA2glLrbOfgC2kB3MpmUc7mcBophGFZyACKiRYTNZqN3uiQiBEGwCIJgISKISAnAWquNMYiIPjhoNBorINzbMsZkbKZ1s9kM028FgNFo9AE8AJ9RFNVEJANI6+PZAkAURbVzC8f6eLYAMBgMyt57DRS11pVLgCRJlsBaKZX0er3VIURrLcaYfYiZpbQ2xmhrbTbEfr+fCeaSgziOM4Grf/nKnU7nJHU4HKqrACIy997fp3tKqfmp2bMntFqtN+BxJ9/H4/HTrwDX1g/Ee8aNyc3z/wAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/new_config.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAHcSURBVDiNpdKxa5NhEAbwX4uDUEFEpzo6FNShIohD0SVQwQyVDEJ0MEMxoNiohYIFhUqQYizRLNEPWxyMoGaRKiLBRUUd/AMqOAhVBF1Epd/hUId+FZF0EA9eXu7uuXuf97nrWV5e9j+2bq1Ep9PpQz8+5XK5b51OZwiXcC+Xy11bxfV0YzA/P38Cl/E1u6/jDb5jfz6f/9GVQbvdTrAXO1HD+UKhsNRut3MYwMlCofAjw1ZR+82g1WptwnNsx91isXh4tXGr1dqKRTzDKYzgAnb1zM7O9uIIzmAQd3EII6VS6RHMzc314T02/0H4YqlUOr8uIrbiCrbgeLlcvtFsNs/hfrPZfImx7Fub8Rp3sFAulx//FrFerw8iwb5KpbJUr9fXYyl76QOGMuozlUpl8U/duk4BpqenZ3A6cxcwNDEx8eVvXG/XakTE2Yi4HREiYiAiHk5NTfX9jevKYHJysh83cQy3MJylniBfrVZ/rtlgfHx8g5VxDeKVlZE9wJ4M0sLRWq22TJdVjohmVgy7sREHrezIAIr4jEpXDdI03ZGmqexcbTQabxuNxpc0TYfTNP2YxcdGR0e3dW0QEcci4kVEPI2IqdV4kiTvI+JARCxGxIUkSd6tKeK/2C+l7dZWE4J7LwAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/information.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAKcSURBVDjLpZPLa9RXHMU/d0ysZEwmMQqZiTaP0agoaKGJUiwIxU0hUjtUQaIuXHSVbRVc+R8ICj5WvrCldJquhVqalIbOohuZxjDVxDSP0RgzyST9zdzvvffrQkh8tBs9yy9fPhw45xhV5X1U8+Yhc3U0LcEdVxdOVq20OA0ooQjhpnfhzuDZTx6++m9edfDFlZGMtXKxI6HJnrZGGtauAWAhcgwVnnB/enkGo/25859l3wIcvpzP2EhuHNpWF9/dWs/UnKW4EOGDkqhbQyqxjsKzMgM/P1ymhlO5C4ezK4DeS/c7RdzQoa3x1PaWenJjJZwT9rQ1gSp/js1jYoZdyfX8M1/mp7uFaTR8mrt29FEMQILr62jQ1I5kA8OF59jIItVA78dJertTiBNs1ZKfLNG+MUHX1oaURtIHEAOw3p/Y197MWHEJEUGCxwfHj8MTZIcnsGKxzrIURYzPLnJgbxvG2hMrKdjItjbV11CYKeG8R7ygIdB3sBMFhkem0RAAQ3Fuka7UZtRHrasOqhYNilOwrkrwnhCU/ON5/q04vHV48ThxOCuoAbxnBQB+am65QnO8FqMxNCjBe14mpHhxBBGCWBLxD3iyWMaYMLUKsO7WYH6Stk1xCAGccmR/Ozs/bKJuXS39R/YgIjgROloSDA39Deit1SZWotsjD8pfp5ONqZ6uTfyWn+T7X0f59t5fqDhUA4ry0fYtjJcWeZQvTBu4/VqRuk9/l9Fy5cbnX+6Od26s58HjWWaflwkusKGxjm1bmhkvLXHvh1+WMbWncgPfZN+qcvex6xnUXkzvSiYP7EvTvH4toDxdqDD4+ygT+cKMMbH+3MCZ7H9uAaDnqytpVX8cDScJlRY0YIwpAjcNcuePgXP/P6Z30QuoP4J7WbYhuQAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/README.md">
+<INLINE>
+**&name; Plugin**
+
+This Plugin installs and provides Dropbox support for unRAID v6.
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.page">
+<INLINE>
+<![CDATA[
+Menu="NetworkServices"
+Title="NZBGet"
+Icon="nzbget.png"
+---
+<?PHP
+$nzbget_cfg = parse_ini_file( "/boot/config/plugins/nzbget/nzbget.cfg");
+$nzbget_installed = is_dir( $nzbget_cfg['INSTALLDIR'] ) ? "yes" : "no";
+
+//Get local plugin file version
+$nzbget_localplg = shell_exec('grep "<\!ENTITY version" /boot/config/plugins/nzbget.plg | cut -d\" -f2');
+
+//Get remote plugin file version.  Uses Limetech plugin php to perform this function
+$nzgbet_remoteplg = shell_exec("/usr/local/sbin/plugin check nzbget.plg");
+
+$nzbget_localapp = shell_exec("/etc/rc.d/rc.nzbget getver app local");
+$nzbget_remoteapp = shell_exec("/etc/rc.d/rc.nzbget getver app remote");
+
+if ($nzbget_installed=="yes") {
+  $nzbget_running = file_exists( "/var/run/nzbget/nzbget.pid" ) ? "yes" : "no";
+  $nzbget_datasize = shell_exec ( "/etc/rc.d/rc.nzbget storagesize $nzbget_cfg[INSTALLDIR]" );
+  $nzbget_datacheck = shell_exec ( "/etc/rc.d/rc.nzbget datacheck" );
+}
+$controls_exist = "false";
+$updates_exist = "false";
+?>
+
+<html>
+<head></head>
+<body>
+
+<div style="width: 49%; float:left; border: 0px solid black;">
+  <div id="title">
+    <span class="left">Status:&nbsp;<img src='/plugins/nzbget/device_status.png'>
+      <?if ($nzbget_installed=="yes"):?>
+        <?if ($nzbget_running=="yes"):?>
+          <span class="green"><a href="http://<?=$var['NAME'];?>:<?=$nzbget_cfg['PORT'];?>" style="color: green; text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" title="Click here to open NZBGet web page.&#13;Default Login:&#13;UserID: nzbget&#13;Passwd: tegbzn6789" target="_blank"><span class="green"><b>NZBGet is RUNNING on port <?=$nzbget_cfg['PORT'];?></b></span></a></span>
+        <?else:?>
+          <span class="red"><b>NOT RUNNING</b></span>
+        <?endif;?>
+      <?else:?>
+        <span class="red"><b>NOT INSTALLED</b></span>
+      <?endif;?>
+    </span>
+  </div>
+  
+  <? if ($nzbget_installed=="yes"): ?>
+    <div style="border: 0px solid black;">
+      <span class="left">
+        <?=$nzbget_datasize?>
+        <?=$nzbget_datacheck?>  
+	  </span>
+    </div>  
+  <?endif;?>   
+       
+  <br>
+  
+  <div style="border: 0px solid black;">
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td colspan="2" style="width:300px">Version Information</td>
+      </tr>
+      <tr style="font-weight:bold; background:#FFFFFF;">
+        <td>NZBGet</td>
+        <td>
+          <?if ($nzbget_localapp != "Unknown"):?>
+            <span class="green-text"><?=$nzbget_localapp?></span>
+          <?else:?>
+            <span class="red-text">UNKNOWN</span>
+          <?endif;?>
+        </td>
+      </tr>
+      <tr style="font-weight:bold; background:#FFFFFF;">
+        <td>NZBGet Plugin</td>
+        <td>
+          <?if ($nzbget_localplg != "Unknown"):?>
+              <span class="green-text"><?=$nzbget_localplg?></span>
+          <?else:?>
+            <span class="red-text">UNKNOWN</span>
+          <?endif;?>
+        </td>
+      </tr>      
+    </table>
+  </div>  
+
+  <br></br>
+
+  <div>
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td colspan="2">Control</td>
+      </tr>    
+    <?if ($nzbget_installed=="yes"):?>
+      <?if ($nzbget_running=="yes"):?>
+        <tr>
+        <td width="30%">
+          <form name="nzbget_start_stop" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.nzbget stop">
+            <input type="submit" name="runCmd" value="Stop">
+          </form>      
+        </td>
+        <td>Stop NZBGet Daemon</td>
+        </tr>
+        <tr>
+        <td width="30%">
+          <form name="nzbget_restart" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.nzbget restart">
+            <input type="submit" name="runCmd" value="Restart">
+          </form>  
+        </td>
+        <td>Restart NZBGet Daemon</td>
+        </tr>
+        <?$controls_exist = "true"?>
+      <?else:?>
+        <tr>
+        <td width="30%">
+          <form name="nzbget_start" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.nzbget buttonstart">
+            <input type="submit" name="runCmd" value="Start">
+          </form>
+        </td>
+        <td>Start NZBGet Daemon</td>
+        </tr>
+        <?$controls_exist = "true"?>
+      <?endif;?>
+    <?else:?>
+        <tr>
+      <td width="30%">
+        <form name="nzbget_install" method="POST" action="/update.htm" target="progressFrame">
+          <input type="hidden" name="cmd" value="/etc/rc.d/rc.nzbget install">
+          <input type="submit" name="runCmd" value="Install">
+        </form>
+      </td>
+      <td>Install NZBGet Application</td>
+      </tr>
+      <?$controls_exist = "true"?>      
+    <?endif;?>
+      
+    <?if ($controls_exist=="false"):?>
+      <tr>
+        <td colspan="2" align="center">No Control Actions available</td>
+      </tr>
+    <?endif;?>
+    </table>
+  </div>  
+  <br></br> 
+  <div style="border: 0px solid black;">
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td colspan="2">Updates</td>
+      </tr>
+
+      <?if (($nzbget_remoteapp != $nzbget_localapp) && ($nzbget_localapp != "Unknown") && ($nzbget_remoteapp != "Unknown")): ?>
+        <tr>
+          <td width="30%">
+          <form name="nzbget_updateapp" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.nzbget updateapp">
+            <input type="submit" name="runCmd" value="Update NZBGet">
+          </form>
+          </td>
+          <td><span class="red-text">An update is available to NZBGet</span></td>
+        </tr>
+        <?$updates_exist="true"?>
+      <?endif;?>
+
+      <?if ($updates_exist=="false"):?>
+        <tr>
+          <td colspan="2" align="center">No updates available at this time</td>
+        </tr>
+      <?endif;?>
+    </table>
+  </div>
+  <br></br>
+  <br></br>
+</div>
+
+<div style="width: 49%; float:right; border: 0px solid black;">
+  <div id="title">
+    <span class="left">Configuration:&nbsp;<img src='/plugins/nzbget/new_config.png'></span>
+  </div>
+  <form name="nzbget_settings" method="POST" action="/update.htm" target="progressFrame" onsubmit="validateForm();">
+    <input type="hidden" name="cmd" value="/etc/rc.d/rc.nzbget">
+    <table class="settings">
+      <tr>
+        <td>Enable NZBGet Service:</td>
+        <td>
+          <select name="arg1" id="arg1" size="1">
+            <?=mk_option($nzbget_cfg['SERVICE'], "disable", "No");?>
+            <?=mk_option($nzbget_cfg['SERVICE'], "enable", "Yes");?>
+          </select>
+        </td>
+      </tr>
+      <tr>
+        <td>NZBGet Port:</td>
+        <td><input type="text" name="arg2" id="arg2" maxlength="60" value="<?=$nzbget_cfg['PORT'];?>"></td>
+      </tr>
+      <tr>
+        <td>NZBGet Location:</td>
+        <td><input type="text" name="arg3" id="arg3" maxlength="60" value="<?=$nzbget_cfg['INSTALLDIR'];?>"></td>
+      </tr>
+    </table>
+    <div align="center">
+      <hr size="3" align="center" width="75%" color="grey" style="margin-top:20px;margin-bottom:18px">
+      <input type="submit" name="runCmd" value="Apply"><button type="button" onClick="done();">Done</button>
+    </div>
+  </form>
+  <br />
+</div>
+
+<script type="text/javascript">
+function validateForm() {
+  document.getElementById('arg2').disabled = false;
+  document.getElementById('arg3').disabled = false;
+}
+
+function checkRUNNING(form) {
+  if ("<?=$nzbget_running;?>" == "yes") {
+    form.arg2.disabled = true;
+    form.arg3.disabled = true;
+  }
+}
+
+checkRUNNING(document.nzbget_settings);
+</script>
+
+</body>
+</html>
+
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/etc/rc.d/rc.&name;" Mode="0770">
+<INLINE>
+<![CDATA[
+#!/bin/bash
+# start|stop|restart|enable|disable|install|buttonstart|storagesize|datacheck|updateapp|getver
+
+nzbget_start()
+{
+  # no-op if not enabled
+  if [ $SERVICE != "enable" ]; then
+    echo "Service is not enabled!"
+    sleep 1
+    return
+  fi
+
+  # no-op if already running
+  if [ -f /var/run/nzbget/nzbget.pid ]; then
+    echo "NZBGet daemon already running!"
+    sleep 1
+    return
+  fi
+
+  # if not installed yet, call install function
+  if [[ ! -f "$INSTALLDIR/nzbget.conf" ]]; then
+    nzbget_install
+  fi
+
+  echo "Starting NZBGet..."
+  sleep 1
+
+  sudo -u nobody /usr/local/nzbget/nzbget -D -c $INSTALLDIR/nzbget.conf &> /dev/null
+
+  PID=$(ps -ef | grep nzbget | grep -v grep | awk '{print $2}');
+  test "$PID" != "" && echo $PID > /var/run/nzbget/nzbget.pid
+
+  echo "... OK"
+  sleep 1
+}
+
+nzbget_stop()
+{
+  # no-op if already stopped
+  if [ ! -f /var/run/nzbget/nzbget.pid ]; then
+    return
+  fi
+
+  echo "Stopping NZBGet..."
+  sleep 1
+
+  #kill -9 `cat /var/run/nzbget/nzbget.pid`
+  /usr/local/nzbget/nzbget -Q -c $INSTALLDIR/nzbget.conf
+
+  # remove copy of pid created during start
+  rm -f /var/run/nzbget/nzbget.pid
+
+  echo "... OK"
+  sleep 1
+}
+
+nzbget_restart()
+{
+  nzbget_stop
+  nzbget_start
+}
+
+nzbget_buttonstart()
+{
+  CONFIG="/boot/config/plugins/nzbget/nzbget.cfg"
+  if [ -f $CONFIG ]; then
+    # a less greedy sed.  only replaces the first occurance of disabled with enabled.  ie. will only hit service line which is (usually) always first in cfg
+	sed -i "0,/"disable"/s/"disable"/"enable/"" $CONFIG 2>/dev/null
+    SERVICE=enable
+    nzbget_start
+  fi
+}
+
+write_config()
+{
+  echo "SERVICE=\"$SERVICE\"" >> /boot/config/plugins/nzbget/nzbget.cfg
+  echo "PORT=\"$PORT\"" >> /boot/config/plugins/nzbget/nzbget.cfg
+  echo "INSTALLDIR=\"$INSTALLDIR\"" >> /boot/config/plugins/nzbget/nzbget.cfg
+}
+
+nzbget_change_settings()
+{
+  #nb. when passing params from enable/disable functions, params will take new numbering. ie. $2 in enable will become the first ($1) param here, and so on
+  PORT="$1"
+  INSTALLDIR="$2"
+}
+
+nzbget_enable()
+{
+  echo "Applying Settings ($1) ..."
+  sleep 2
+  SERVICE=$1 #enable
+  nzbget_change_settings $2 $3
+  write_config
+  nzbget_install
+  nzbget_restart
+  echo "... OK"
+  sleep 1
+}
+
+nzbget_disable()
+{
+  echo "Applying Settings ($1) ..."
+  sleep 2
+  nzbget_stop
+  SERVICE=$1 #disable
+  nzbget_change_settings $2 $3
+  write_config
+  echo "... OK"
+  sleep 1
+}
+
+nzbget_install()
+{
+  echo "Installing NZBGet..."
+  sleep 1
+
+  # Create the users chosen application installation dir if not already in existance.  
+  # Accounts for when the user chooses a location from within the plugin web-gui settings page that does not exist on disk.
+  if [ ! -d "$INSTALLDIR" ]; then
+    mkdir "$INSTALLDIR" 2>/dev/null
+    chmod 777 "$INSTALLDIR"
+    chown nobody:users "$INSTALLDIR"
+  fi
+  
+  # create user copy of template nzbget.conf
+  cp -p /usr/local/nzbget/nzbget.conf $INSTALLDIR/nzbget.conf 2>/dev/null  
+  
+  #update nzbget.conf with installation specific values.  eg MainDir, post-processing script location, default password
+  sed -i 's#ControlPort=.*#ControlPort='$PORT'#' $INSTALLDIR/nzbget.conf 2>/dev/null
+  sed -i 's#ControlPassword=.*#ControlPassword=tegbzn6789#' $INSTALLDIR/nzbget.conf 2>/dev/null
+  sed -i 's#MainDir=.*#MainDir='$INSTALLDIR'#' $INSTALLDIR/nzbget.conf 2>/dev/null  
+  sed -i 's#DaemonUserName=.*#DaemonUserName=nobody#' $INSTALLDIR/nzbget.conf 2>/dev/null
+
+  echo "... OK"
+  sleep 1
+}
+
+nzbget_storagesize()
+{
+  if [ $1 ] && [ $2 ]; then
+    if [ -d $1 ]; then
+      INST=`du -sh $1 | cut -f1`
+    elif [ -f $1 ]; then
+      INST=`ls -lah $1 | awk '{ print $5}'`
+    fi
+
+    if [ -d $2 ]; then
+      DAT=`du -sh $2 | cut -f1`
+    elif [ -f $2 ]; then
+      DAT=`ls -lah $2 | awk '{ print $5}'`
+    fi
+
+    if [ $1 == $2 ]; then
+	  echo "<p>Storage memory usage: install + data directory: <span class="green-text"><b>$INST</b></span></p>"
+    else
+	  echo "<p>Storage memory usage: install directory: <span class="green-text"><b>$INST</b></span></p>"
+    fi
+  elif [ $1 ]; then
+    if [ -d $1 ]; then
+      INST=`du -sh $1 | cut -f1`
+    elif [ -f $1 ]; then
+      INST=`ls -lah $1 | awk '{ print $5}'`
+    fi
+	echo "<p>NZBGet Storage Usage: <span class="green-text"><b>$INST</b></span></p>"
+  fi
+}
+
+nzbget_datacheck()
+{
+  array=( ramfs proc tempfs sysfs )
+  fs=$( stat -f -c '%T' $INSTALLDIR )
+  if [ "$fs" = "msdos" ]; then
+    echo "<p style="color:red\;"><b>WARNING:</b> Your data is located on your flash drive. This can decrease the life span of your flash device!</p>"
+  else
+    for i in "${array[@]}"
+    do
+      if [ $i = $fs ]; then
+        echo "<p style="color:red\;"><b>WARNING:</b> Your data is not persistent and WILL NOT survive a reboot. Please locate data on persistent storage. eg. cache/array disk</p>"
+        break
+      else
+        echo "<p style="color:green\;">Your data will persist after a reboot</p>"
+        break
+      fi
+    done
+  fi
+}
+
+nzbget_updateapp()
+{
+  nzbget_stop;
+  echo "Downloading Update..."
+  REMPKG=$(wget --no-check-certificate https://github.com/overbyrn/unraid-v6-plugins/releases/download/nzbget/nzbget_appver.txt -q -O - | cut -d: -f2)
+  wget -q --no-check-certificate -O /tmp/$REMPKG -L https://github.com/overbyrn/unraid-v6-plugins/releases/download/nzbget/$REMPKG 2>/dev/null  
+  if [ ! -f /tmp/$REMPKG ]; then
+    echo "Download failed, update aborted!"
+    sleep 2
+  else
+    echo "...OK"
+    sleep 1
+    echo "Backing up nzbget.conf to /boot/config/plugins/nzbget/nzbget.conf.save"
+    sleep 1
+    cp -f $INSTALLDIR/nzbget.conf /boot/config/plugins/nzbget/nzbget.conf.save 2>/dev/null
+    echo "Upgrading Application..."
+    sleep 1
+    upgradepkg --install-new nzbget*%/tmp/$REMPKG 2>/dev/null
+    rm -f /boot/config/plugins/nzbget/nzbget*.txz 2>/dev/null
+    mv -f /tmp/$REMPKG /boot/config/plugins/nzbget 2>/dev/null
+    chown -R nobody:users /usr/local/nzbget 2>/dev/null
+    chmod -R 777 /usr/local/nzbget 2>/dev/null
+    echo "...OK"
+    sleep 1
+  fi
+
+  # although we have just upgraded the nzbget package, there is a scenario where we have reached this point having never yet performed an install.  by
+  # install, we mean creating the persisent directory used to store the config file and nzbget working directories.  we call nzbget_start which itself
+  # performs a check to make sure the user config file exists.  So the remainder of the install work (create work dir and config file) is done from start 
+  # by calling a generic install function.
+  nzbget_start;
+}
+
+nzbget_plg()
+{
+  if [ -f /boot/config/plugins/nzbget.plg ]; then
+    VERSION=$(grep "<\!ENTITY version" /boot/config/plugins/nzbget.plg | cut -d\" -f2)
+	else
+	  VERSION=Unknown
+	fi
+  # nb: remember to use -n to remove CRLF as otherwise php var needs TRIM on the shell_exec line
+  echo -n "$VERSION"
+}
+
+nzbget_app()
+{
+  case "$1" in
+    'local')
+      VERSION=$(/usr/local/nzbget/nzbget -v | awk '{print $3}')
+	  if [ "$VERSION" == "" ]; then
+        VERSION=Unknown
+	  fi	
+    ;;
+    'remote')
+      VERSION=$(wget --no-check-certificate https://github.com/overbyrn/unraid-v6-plugins/releases/download/nzbget/nzbget_appver.txt -q -O - | cut -d: -f1)
+      if [ "$VERSION" == "" ]; then
+        VERSION=Unknown
+      fi
+    ;;
+  esac
+  echo -n "$VERSION"
+}
+
+nzbget_getver()
+{
+  case "$1" in
+    'plg')
+      nzbget_plg
+    ;;
+    'app')
+      nzbget_app $2
+    ;;
+  esac
+}
+
+# read our configuration
+source /boot/config/plugins/nzbget/nzbget.cfg
+
+case "$1" in
+  'start')
+    nzbget_start
+  ;;
+  'stop')
+    nzbget_stop
+  ;;
+  'restart')
+    nzbget_restart
+  ;;
+  'enable')
+    nzbget_enable $1 $2 $3 $4 $5 $6 $7
+  ;;
+  'disable')
+    nzbget_disable $1 $2 $3 $4 $5 $6 $7
+  ;;
+  'install')
+    nzbget_install
+  ;;
+  'buttonstart')
+    nzbget_buttonstart
+  ;;
+  'storagesize')
+    nzbget_storagesize $2
+  ;;
+  'datacheck')
+    nzbget_datacheck
+  ;;
+  'updateapp')
+    nzbget_updateapp
+  ;;
+  'getver')
+    nzbget_getver $2 $3
+    ;;
+  *)
+    echo "usage $0 start|stop|restart|enable|disable|install|buttonstart|storagesize|datacheck|updateapp|getver [argv0]"
+esac
+
+]]>
+</INLINE>
+</FILE>
+
+<!-- event handler -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/disks_mounted" Mode="0770">
+<INLINE>
+#!/bin/bash
+#load plugin config
+source /boot/config/plugins/nzbget/&name;.cfg
+#Start nzbget if enabled
+[ $SERVICE = "enable" ] &amp;&amp; /etc/rc.d/rc.&name; start
+</INLINE>
+</FILE>
+
+<!-- event handler -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/unmounting_disks" Mode="0770">
+<INLINE>
+#!/bin/bash
+/etc/rc.d/rc.&name; stop
+</INLINE>
+</FILE>
+
+<FILE Name="/tmp/plugin-development" Run="/bin/bash">
+<INLINE>
+if [ "&devplugin;" == "true" ]; then
+  if [ -f /boot/config/plugins/&name;.php ]; then
+    rm -f /usr/local/emhttp/plugins/&name;/&name;.php
+    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+  else
+    mv /usr/local/emhttp/plugins/&name;/&name;.php /boot/config/plugins/&name;.php
+    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+  fi
+  if [ -f /boot/config/plugins/rc.&name; ]; then
+    rm -f /etc/rc.d/rc.&name;
+    ln -s /boot/config/plugins/rc.&name; /etc/rc.d/rc.&name;
+  else
+    mv /etc/rc.d/rc.&name; /boot/config/plugins/rc.&name;
+    ln -s /boot/config/plugins/rc.&name; /etc/rc.d/rc.&name;
+  fi
+fi
+
+rm /tmp/plugin-development
+</INLINE>
+</FILE>
+
+</PLUGIN>
