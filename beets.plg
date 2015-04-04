@@ -1,0 +1,766 @@
+<?xml version='1.0' standalone='yes'?>
+
+<!DOCTYPE PLUGIN [
+<!ENTITY name       "beets">
+<!ENTITY author     "overbyrn">
+<!ENTITY version    "2014.09.09">
+<!ENTITY category   "Network Services">
+<!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
+<!ENTITY packageURL "https://github.com/overbyrn/unraid-v6-plugins/releases/download/&name;">
+<!ENTITY devplugin  "false">
+]>
+
+<PLUGIN  name="&name;"
+         author="&author;"
+         version="&version;"
+         category="&category;"
+         pluginURL="&pluginURL;">
+
+<!--
+Copyright 2013, Rich Manton (overbyrn)
+
+This Plugin installs and provides support for Beets music tool on unRAID.
+
+Plugin file locations:
+ /boot/config/plugins/beets.plg                                         # this file
+ /tmp/plugin-install                                                    # installation script
+
+ /boot/packages/pysetuptools-3.6-x86_64-1ponce.txz                      # python setuptools package
+ /boot/packages/python-pip-1.2.1-x86_64-1fg.txz                         # python pip installer package
+ /boot/packages/libyaml-0.1.6-x86_64-1_slack14.1.txz                    # python libyaml package
+ /boot/packages/mp3gain-1.5.2.r2-x86_64-1_fs.tgz                        # mp3gain package: required for beets replygain plugin
+ /boot/packages/chromaprint-fpcalc-1.1-linux-x86_64.tgz                 # fpcalc package: required for beets musicbrainz plugin
+ /boot/packages/ffmpeg.static.64bit.2014-07-16.tgz                      # ffmpeg static binaries package
+    
+ /boot/config/plugins/beets/beets.cfg                                   # non-volatile configuration
+ /boot/config/plugins/beets/beets.sh                                    # example post-processing script
+
+ /etc/rc.d/rc.beets                                                     # plugin control script
+ 
+ /usr/local/emhttp/plugins/beets/beets.page                             # page file for webGui menu system
+ /usr/local/emhttp/plugins/beets/beets.php                              # webGui page code (settings)
+ /usr/local/emhttp/plugins/beets/beetsctl.php                           # webGui control code (on submit)
+ /usr/local/emhttp/plugins/beets/beets.png                              # plugin icon file
+ /usr/local/emhttp/plugins/beets/device_status.png                      # plugin webgui image file
+ /usr/local/emhttp/plugins/beets/new_config.png                         # plugin webgui image file
+ /usr/local/emhttp/plugins/beets/information.png                        # plugin webgui image file
+
+-->
+
+<FILE Name="/boot/packages/libyaml-0.1.6-x86_64-1_slack14.1.txz" Run="upgradepkg --install-new">
+<URL>&packageURL;/libyaml-0.1.6-x86_64-1_slack14.1.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/mp3gain-1.5.2.r2-x86_64-1_fs.tgz" Run="upgradepkg --install-new">
+<URL>&packageURL;/mp3gain-1.5.2.r2-x86_64-1_fs.tgz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/chromaprint-fpcalc-1.1-linux-x86_64.tgz" Run="upgradepkg --install-new">
+<URL>&packageURL;/chromaprint-fpcalc-1.1-linux-x86_64.tgz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/ffmpeg.static.64bit.2014-07-16.tgz" Run="upgradepkg --install-new">
+<URL>&packageURL;/ffmpeg.static.64bit.2014-07-16.tgz</URL>
+</FILE>
+
+<FILE Name="/boot/config/plugins/&name;/ez_setup.py">
+<URL>-q --no-check-certificate &packageURL;/ez_setup.py</URL>
+</FILE>
+
+<FILE Name="/boot/config/plugins/&name;/get-pip.py">
+<URL>-q --no-check-certificate &packageURL;/get-pip.py</URL>
+</FILE>
+
+<FILE Name="/boot/config/plugins/&name;/beets.sh">
+<URL>-q --no-check-certificate &packageURL;/beets.sh</URL>
+</FILE>
+
+<FILE Name="/boot/config/plugins/&name;/config.yaml">
+<INLINE>
+plugins: fetchart embedart convert scrub replaygain lastgenre chroma discogs
+directory: /mnt/user/Music Tagging
+library: /boot/config/plugins/&name;/&name;.blb
+art_filename: cover
+threaded: yes
+original_date: no
+per_disc_numbering: no
+color: no
+
+convert:
+    auto: yes
+    ffmpeg: /usr/bin/ffmpeg
+    opts: -ab 320k -ac 2 -ar 48000
+    max_bitrate: 320
+    dest: /mnt/user/Music Tagging/Converted
+    threads: 4
+    
+paths:
+    default: Album Artists/$albumartist/$album%aunique{}/$track - $title
+    singleton: Singles/$artist - $title
+    comp: Various Artists/$album/$track - $title
+    
+import:
+    write: yes
+    copy: yes
+    move: no
+    resume: ask
+    incremental: no
+    quiet_fallback: skip
+    timid: no
+    log: /boot/config/plugins/&name;/beetslog.txt
+
+lastgenre:
+    auto: yes
+    source: album
+
+embedart:
+    auto: yes
+
+fetchart:
+    auto: yes
+    
+replaygain:
+    auto: yes
+</INLINE>
+</FILE>
+
+<FILE Name="/boot/config/plugins/&name;/&name;.cfg">
+<INLINE>
+DESTDIR="/mnt/user/Music Tagging"
+LIBDIR="/boot/config/plugins/&name;/&name;.blb"
+ARTFILE="cover"
+THREADED="yes"
+ORIGDATE="no"
+PERDISCNUM="no"
+CONVERT_STATE="no"
+CONVERT_OPTS="-ab 320k -ac 2 -ar 48000"
+CONVERT_MAXBITRATE="320"
+CONVERT_DESTINATION="/mnt/user/MusicTagging/Converted"
+CONVERT_THREADS="4"
+PATH_DEFAULT="Album Artists/$albumartist/$album%aunique{}/$track - $title"
+PATH_SINGLETON="Singles/$artist - $title"
+PATH_COMPILATION="Various Artists/$album/$track - $title"
+IMPORT_WRITE="yes"
+IMPORT_COPY="yes"
+IMPORT_MOVE="no"
+IMPORT_RESUME="ask"
+IMPORT_INCREMENTAL="yes"
+IMPORT_FALLBACK="skip"
+IMPORT_TIMID="no"
+IMPORT_LOG="/boot/config/plugins/&name;/beetslog.txt"
+LASTGENRE="yes"
+LASTGENRESOURCE="album"
+EMBEDART="yes"
+FETCHART="yes"
+REPLAYGAIN="no"
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="install">
+<INLINE>
+if [ -d /usr/local/emhttp/plugins/&name; ]; then
+  rm -r /usr/local/emhttp/plugins/&name;
+fi;
+if [ -f /etc/rc.d/rc.&name; ]; then
+  rm -f /etc/rc.d/rc.&name;
+fi;
+
+# install python supporting files, beets and beets plugins
+
+# install setuptools - needed for pip to install
+python /boot/config/plugins/&name;/ez_setup.py --to-dir=/tmp
+
+# install pip - needed to install beets and other support apps
+python /boot/config/plugins/&name;/get-pip.py --no-setuptools
+
+# install beets
+pip install beets
+
+# install pyacoustid - needed for chromaprint plugin
+pip install pyacoustid
+
+# install discogs client libs - needed for discogs plugin
+pip install discogs-client
+
+# install requests - needed for fetchart plugin (requirement may already be satisfied during earlier install components)
+pip install requests
+
+# install pylast - needed for lastgenre plugin
+pip install pylast
+
+# setup global environment variable, needed so beets knows where to find its config file. creates if missing, updates if present. 
+! grep -q BEETSDIR /etc/profile &amp;&amp; sed -i '$a\export BEETSDIR=/\boot/config/\plugins/\beets' /etc/profile || sed -i 's#.*BEETSDIR.*#BEETSDIR=/\boot/config/\plugins/\beets#' /etc/profile
+
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+rm -r /usr/local/emhttp/plugins/&name;
+rm -f /etc/rc.d/rc.&name;
+rm -rf /boot/config/plugins/&name;
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.png" Type="base64">
+<INLINE>
+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"
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/device_status.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFJSURBVDiNtZI9awJBEIafVctUSv6KvUUCEpPiDhsFsT2CVcSt5OqzlWBvKzb5QDCCvX8lYL2zsm4alTtRMYRM987OPLzzssp7z1+qcKo5m81u8/n8s1KqDuC9nzjnXqvV6vdVAOecds69pFoxcAN0TwKm0+kSWG+326Rer69EpA2glLrbOfgC2kB3MpmUc7mcBophGFZyACKiRYTNZqN3uiQiBEGwCIJgISKISAnAWquNMYiIPjhoNBorINzbMsZkbKZ1s9kM028FgNFo9AE8AJ9RFNVEJANI6+PZAkAURbVzC8f6eLYAMBgMyt57DRS11pVLgCRJlsBaKZX0er3VIURrLcaYfYiZpbQ2xmhrbTbEfr+fCeaSgziOM4Grf/nKnU7nJHU4HKqrACIy997fp3tKqfmp2bMntFqtN+BxJ9/H4/HTrwDX1g/Ee8aNyc3z/wAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/new_config.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAHcSURBVDiNpdKxa5NhEAbwX4uDUEFEpzo6FNShIohD0SVQwQyVDEJ0MEMxoNiohYIFhUqQYizRLNEPWxyMoGaRKiLBRUUd/AMqOAhVBF1Epd/hUId+FZF0EA9eXu7uuXuf97nrWV5e9j+2bq1Ep9PpQz8+5XK5b51OZwiXcC+Xy11bxfV0YzA/P38Cl/E1u6/jDb5jfz6f/9GVQbvdTrAXO1HD+UKhsNRut3MYwMlCofAjw1ZR+82g1WptwnNsx91isXh4tXGr1dqKRTzDKYzgAnb1zM7O9uIIzmAQd3EII6VS6RHMzc314T02/0H4YqlUOr8uIrbiCrbgeLlcvtFsNs/hfrPZfImx7Fub8Rp3sFAulx//FrFerw8iwb5KpbJUr9fXYyl76QOGMuozlUpl8U/duk4BpqenZ3A6cxcwNDEx8eVvXG/XakTE2Yi4HREiYiAiHk5NTfX9jevKYHJysh83cQy3MJylniBfrVZ/rtlgfHx8g5VxDeKVlZE9wJ4M0sLRWq22TJdVjohmVgy7sREHrezIAIr4jEpXDdI03ZGmqexcbTQabxuNxpc0TYfTNP2YxcdGR0e3dW0QEcci4kVEPI2IqdV4kiTvI+JARCxGxIUkSd6tKeK/2C+l7dZWE4J7LwAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/information.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAKcSURBVDjLpZPLa9RXHMU/d0ysZEwmMQqZiTaP0agoaKGJUiwIxU0hUjtUQaIuXHSVbRVc+R8ICj5WvrCldJquhVqalIbOohuZxjDVxDSP0RgzyST9zdzvvffrQkh8tBs9yy9fPhw45xhV5X1U8+Yhc3U0LcEdVxdOVq20OA0ooQjhpnfhzuDZTx6++m9edfDFlZGMtXKxI6HJnrZGGtauAWAhcgwVnnB/enkGo/25859l3wIcvpzP2EhuHNpWF9/dWs/UnKW4EOGDkqhbQyqxjsKzMgM/P1ymhlO5C4ezK4DeS/c7RdzQoa3x1PaWenJjJZwT9rQ1gSp/js1jYoZdyfX8M1/mp7uFaTR8mrt29FEMQILr62jQ1I5kA8OF59jIItVA78dJertTiBNs1ZKfLNG+MUHX1oaURtIHEAOw3p/Y197MWHEJEUGCxwfHj8MTZIcnsGKxzrIURYzPLnJgbxvG2hMrKdjItjbV11CYKeG8R7ygIdB3sBMFhkem0RAAQ3Fuka7UZtRHrasOqhYNilOwrkrwnhCU/ON5/q04vHV48ThxOCuoAbxnBQB+am65QnO8FqMxNCjBe14mpHhxBBGCWBLxD3iyWMaYMLUKsO7WYH6Stk1xCAGccmR/Ozs/bKJuXS39R/YgIjgROloSDA39Deit1SZWotsjD8pfp5ONqZ6uTfyWn+T7X0f59t5fqDhUA4ry0fYtjJcWeZQvTBu4/VqRuk9/l9Fy5cbnX+6Od26s58HjWWaflwkusKGxjm1bmhkvLXHvh1+WMbWncgPfZN+qcvex6xnUXkzvSiYP7EvTvH4toDxdqDD4+ygT+cKMMbH+3MCZ7H9uAaDnqytpVX8cDScJlRY0YIwpAjcNcuePgXP/P6Z30QuoP4J7WbYhuQAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/README.md">
+<INLINE>
+**&name; Plugin**
+
+This plugin installs and provides support for Beets music tagger
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.page">
+<INLINE>
+Menu="NetworkServices"
+Title="Beets"
+Icon="&name;.png"
+---
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.php">
+<INLINE>
+<![CDATA[
+<?PHP
+$beets_cfg = parse_ini_file( "/boot/config/plugins/beets/beets.cfg");
+?>
+
+<html>
+  <head>
+    <style type="text/css">
+    .tooltip {
+        border-bottom: 1px dotted #000000; color: #000000; outline: none;
+        cursor: help; text-decoration: none;
+        position: relative;
+    }
+    .tooltip span {
+        margin-left: -999em;
+        position: absolute;
+    }
+    .tooltip:hover span {
+        border-radius: 5px 5px; -moz-border-radius: 5px; -webkit-border-radius: 5px; 
+        box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.1); -webkit-box-shadow: 5px 5px rgba(0, 0, 0, 0.1); -moz-box-shadow: 5px 5px rgba(0, 0, 0, 0.1);
+        font-family: Calibri, Tahoma, Geneva, sans-serif;
+        position: absolute; left: 1em; top: 2em; z-index: 99;
+        margin-left: 0; width: 250px;
+    }
+    .classic { padding: 0.8em 1em; }
+    * html a:hover { background: transparent; }
+    .classic {background: #FFFFAA; border: 1px solid #FFAD33; }
+    </style>
+  </head>
+<body>
+
+<form name="beets_settings" method="POST" action="/plugins/beets/beetsctl.php" target="progressFrame" onsubmit="return validateForm();">
+  <input type="hidden" name="cmd" value="apply">  
+  
+  <div style="width: 49%; float:left; border: 0px solid black;">
+    <div id="title">
+      <span class="left"><img src='/plugins/beets/new_config.png'>&nbsp;Beets Configuration : Global Options</span>
+    </div>
+    
+    <table class="settings">
+    <tr>
+      <td><a class="tooltip" href="#">Destination Directory:<span class="classic">The directory to which files will be copied/moved when adding them to the library.</span></a></td>
+      <td><input type="text" name="DESTDIR" id="DESTDIR" maxlength="60" value="<?=$beets_cfg['DESTDIR'];?>"></td>
+    </tr>
+    <tr>
+      <td><a class="tooltip" href="#">Beets Library Directory:<span class="classic">Path to the beets library file.</span></a></td>
+      <td><input type="text" name="LIBDIR" id="LIBDIR" maxlength="60" value="<?=$beets_cfg['LIBDIR'];?>"></td>
+    </tr>
+    <tr>
+      <td><a class="tooltip" href="#">Artwork Filename:<span class="classic">When importing album art, the name of the file (without extension) where the cover art image should be placed. Defaults to cover (eg. images will be named cover.jpg or cover.png and placed in the album's directory)</span></a></td>
+      <td><input type="text" name="ARTFILE" id="ARTFILE" maxlength="60" value="<?=$beets_cfg['ARTFILE'];?>"></td>
+    </tr>
+    <tr>
+      <td><a class="tooltip" href="#">Threaded:<span class="classic">Indicates whether the autotagger should use multiple threads. This makes things faster but may behave strangely.</span></a></td>
+      <td>
+        <select name="THREADED" id="THREADED" size="1">
+          <?=mk_option($beets_cfg['THREADED'], "no", "No");?>
+          <?=mk_option($beets_cfg['THREADED'], "yes", "Yes");?>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td><a class="tooltip" href="#">Original Date:<span class="classic">indicates whether matched albums should have their year, month, and day fields set to the release date of the original version of an album rather than the selected version of the release. That is, if this option is turned on, then year will always equal original_year and so on.</span></a></td>
+      <td>
+        <select name="ORIGDATE" id="ORIGDATE" size="1">
+          <?=mk_option($beets_cfg['ORIGDATE'], "no", "No");?>
+          <?=mk_option($beets_cfg['ORIGDATE'], "yes", "Yes");?>
+        </select>
+      </td>
+    </tr>
+    <tr>
+      <td><a class="tooltip" href="#">Per Disc Numbering:<span class="classic">Controls track numbering style on multi-disc releases. When per_disc_numbering = no, tracks are numbered per-release, so the first track on the second disc has track number N+1 where N is the number of tracks on the first disc. If per_disc_numbering is enabled, then the first track on each disc always has track number 1. If you enable per_disc_numbering, you will likely want to change your Path Format Configuration also to include $disc before $track to make filenames sort correctly in album directories.</span></a></td>
+      <td>
+        <select name="PERDISCNUM" id="PERDISCNUM" size="1">
+          <?=mk_option($beets_cfg['PERDISCNUM'], "no", "No");?>
+          <?=mk_option($beets_cfg['PERDISCNUM'], "yes", "Yes");?>
+        </select>
+      </td>
+      </tr>
+    </table>    
+
+    <div id="title">
+      <span class="left"><img src='/plugins/beets/new_config.png'>&nbsp;Beets Configuration : Convert Settings</span>
+    </div>
+    
+    <table class="settings">
+    <tr>
+    <td><a class="tooltip" href="#">Convert:<span class="classic">Controls whether to enable Beets 'Convert' plugin; used to transcode music and embed album art while exporting to a different directory.</span></a></td>
+    <td>
+      <select name="CONVERT_STATE" id="CONVERT_STATE" size="1">
+        <?=mk_option($beets_cfg['CONVERT_STATE'], "no", "No");?>
+        <?=mk_option($beets_cfg['CONVERT_STATE'], "yes", "Yes");?>
+      </select>
+    </td>        
+    </tr>
+    <tr>
+      <td><a class="tooltip" href="#">Convert Opts:<span class="classic">These are the encoding options that are passed to ffmpeg. Default: "-aq 2". (Note that "-aq &lt;num&gt;" is equivalent to the LAME option "-V &lt;num&gt;".) If you want to specify a bitrate, use "-ab &lt;bitrate&gt;". Refer to the FFmpeg documentation for more details.</span></a></td>
+      <td><input type="text" name="CONVERT_OPTS" id="CONVERT_OPTS" maxlength="60" value="<?=$beets_cfg['CONVERT_OPTS'];?>"></td>
+    </tr>
+    <tr>
+      <td><a class="tooltip" href="#">Max Bitrate:<span class="classic">If you set max_bitrate, all MP3 files with a higher bitrate will be transcoded and those with a lower bitrate will simply be copied. Note that this does not guarantee that all converted files will have a lower bitrate as that depends on the encoder and its configuration. By default (maxbitrate = "0") MP3s will be copied without transcoding and all other formats will be converted.</span></a></td>
+      <td><input type="text" name="CONVERT_MAXBITRATE" id="CONVERT_MAXBITRATE" maxlength="60" value="<?=$beets_cfg['CONVERT_MAXBITRATE'];?>"></td>
+    </tr>
+    <tr>
+      <td><a class="tooltip" href="#">Destination:<span class="classic">Sets the directory the files will be converted (or copied) to.</span></a></td>
+      <td><input type="text" name="CONVERT_DESTINATION" id="CONVERT_DESTINATION" maxlength="60" value="<?=$beets_cfg['CONVERT_DESTINATION'];?>"></td>
+    </tr>
+    <tr>
+      <td><a class="tooltip" href="#">Threads:<span class="classic">Threads determines the number of threads to use for parallel encoding. By default, the plugin will detect the number of processors available and use them all.</span></a></td>
+      <td><input type="text" name="CONVERT_THREADS" id="CONVERT_THREADS" maxlength="60" value="<?=$beets_cfg['CONVERT_THREADS'];?>"></td>
+    </tr>      
+    </table>   
+    
+    <div id="title">
+      <span class="left"><img src='/plugins/beets/new_config.png'>&nbsp;Beets Configuration : Path Format</span>
+    </div>
+    
+    <table class="settings">
+    <tr>
+      <td><a class="tooltip" href="#">Default:<span class="classic">You can also configure the directory hierarchy beets uses to store music. Each string is a template string that can refer to metadata fields like $artist or $title. The filename extension is added automatically. You can specify three special paths: default for most releases, comp for "various artist" releases with no dominant artist, and singleton for non-album tracks. For more about these format strings, see Path Formats section of the Beets Documentation. Note that you almost certainly want to use $albumartist and not $artist. The latter refers to the "track artist" when present, which means that albums that have tracks from different artists on them will be placed into different folders.</span></a></td>
+      <td><input type="text" name="PATH_DEFAULT" id="PATH_DEFAULT" maxlength="120" value="<?=$beets_cfg['PATH_DEFAULT'];?>"></td>
+    </tr>
+    <tr>
+      <td>Singleton:</td>
+      <td><input type="text" name="PATH_SINGLETON" id="PATH_SINGLETON" maxlength="120" value="<?=$beets_cfg['PATH_SINGLETON'];?>"></td>
+    </tr>
+    <tr>
+      <td>Compilation:</td>
+      <td><input type="text" name="PATH_COMPILATION" id="PATH_COMPILATION" maxlength="120" value="<?=$beets_cfg['PATH_COMPILATION'];?>"></td>
+    </tr>
+    </table>  
+
+    <br></br>
+    <br></br>
+    
+  </div>
+
+  <div style="width: 49%; float:right; border: 0px solid black;">
+
+    <div id="title">
+      <span class="left"><img src='/plugins/beets/new_config.png'>&nbsp;Beets Configuration : Import Options</span>
+    </div> 
+
+    <table class="settings">
+      <tr>
+      <td><a class="tooltip" href="#">Write:<span class="classic">Controls whether metadata (e.g., ID3) tags are written to files.</span></a></td>
+      <td>
+        <select name="IMPORT_WRITE" id="IMPORT_WRITE" size="1">
+          <?=mk_option($beets_cfg['IMPORT_WRITE'], "no", "No");?>
+          <?=mk_option($beets_cfg['IMPORT_WRITE'], "yes", "Yes");?>
+        </select>
+      </td>
+      </tr>
+      <tr>
+      <td><a class="tooltip" href="#">Copy:<span class="classic">Controls whether to copy files into the library directory.  This option is ignored if move is enabled (i.e., beets can move or copy files but it doesn't make sense to do both).</span></a></td>
+      <td>
+        <select name="IMPORT_COPY" id="IMPORT_COPY" size="1">
+          <?=mk_option($beets_cfg['IMPORT_COPY'], "no", "No");?>
+          <?=mk_option($beets_cfg['IMPORT_COPY'], "yes", "Yes");?>
+        </select>
+      </td>
+      </tr>
+      <tr>
+      <td><a class="tooltip" href="#">Move:<span class="classic">Controls whether to move files into the library directory.  The effect is similar to the copy option but you end up with only one copy of the imported file. ("Moving" works even across filesystems; if necessary, beets will copy and then delete when a simple rename is impossible.) Moving files can be risky; it's a good idea to keep a backup in case beets doesn't do what you expect with your files. This option overrides copy, so enabling it will always move (and not copy) files.</span></a></td>
+      <td>
+        <select name="IMPORT_MOVE" id="IMPORT_MOVE" size="1">
+          <?=mk_option($beets_cfg['IMPORT_MOVE'], "no", "No");?>
+          <?=mk_option($beets_cfg['IMPORT_MOVE'], "yes", "Yes");?>
+        </select>
+      </td>
+      </tr>
+      <tr>
+      <td><a class="tooltip" href="#">Resume:<span class="classic">Controls whether interrupted imports should be resumed. "Yes" means that imports are always resumed when possible; "no" means resuming is disabled entirely; "ask" (the default) means that the user should be prompted when resuming is possible.</span></a></td>
+      <td>
+        <select name="IMPORT_RESUME" id="IMPORT_RESUME" size="1">
+          <?=mk_option($beets_cfg['IMPORT_RESUME'], "no", "No");?>
+          <?=mk_option($beets_cfg['IMPORT_RESUME'], "yes", "Yes");?>
+          <?=mk_option($beets_cfg['IMPORT_RESUME'], "ask", "Ask");?>
+        </select>
+      </td>
+      </tr>
+      <tr>
+      <td><a class="tooltip" href="#">Incremental:<span class="classic">Controls whether imported directories are recorded and whether these recorded directories are skipped. With this flag, beets will keep track of every directory it ever imports and avoid importing them again. This is useful if you have an "incoming" directory that you periodically add things to. To get this to work correctly, you'll need to use an incremental import every time you run an import on the directory in question, including the first time, when no subdirectories will be skipped. So consider enabling the incremental configuration option.</span></a></td>
+      <td>
+        <select name="IMPORT_INCREMENTAL" id="IMPORT_INCREMENTAL" size="1">
+          <?=mk_option($beets_cfg['IMPORT_INCREMENTAL'], "no", "No");?>
+          <?=mk_option($beets_cfg['IMPORT_INCREMENTAL'], "yes", "Yes");?>
+        </select>
+      </td>
+      </tr>
+      <tr>
+      <td><a class="tooltip" href="#">Quiet Fallback:<span class="classic">Specifies what should happen when there is no strong recommendation. Whenever the normal autotagger mode would ask for confirmation, the quiet mode pessimistically skips the album. The quiet mode also disables the tagger's ability to resume interrupted imports.</span></a></td>
+      <td>
+        <select name="IMPORT_FALLBACK" id="IMPORT_FALLBACK" size="1">
+          <?=mk_option($beets_cfg['IMPORT_FALLBACK'], "skip", "Skip");?>
+          <?=mk_option($beets_cfg['IMPORT_FALLBACK'], "asis", "AsIs");?>
+        </select>
+      </td>
+      </tr>
+      <tr>
+      <td><a class="tooltip" href="#">Timid:<span class="classic">Controls whether the importer runs in timid mode. By default, beets will proceed without asking if it finds a very close metadata match. To disable this and have the importer as you every time, enable this option.</span></a></td>
+      <td>
+        <select name="IMPORT_TIMID" id="IMPORT_TIMID" size="1">
+          <?=mk_option($beets_cfg['IMPORT_TIMID'], "no", "No");?>
+          <?=mk_option($beets_cfg['IMPORT_TIMID'], "yes", "Yes");?>
+        </select>
+      </td>
+      </tr>
+      <tr>
+        <td><a class="tooltip" href="#">Import Log:<span class="classic">Specifies a filename where the importer's log should be kept.</span></a></td>
+        <td><input type="text" name="IMPORT_LOG" id="IMPORT_LOG" maxlength="60" value="<?=$beets_cfg['IMPORT_LOG'];?>"></td>
+      </tr>
+    </table>
+
+    <div id="title">
+      <span class="left"><img src='/plugins/beets/new_config.png'>&nbsp;Beets Configuration : Plugin Options</span>
+    </div>
+
+    <table class="settings">
+    <tr>
+    <td><a class="tooltip" href="#">Use LastFM Genre:<span class="classic">Controls whether to enable Beets 'LastGenre' plugin. The MusicBrainz database does not contain genre information. Therefore, when importing and autotagging music, beets does not assign a genre. The lastgenre plugin fetches tags from Last.fm and assigns them as genres to your albums and items.</span></a></td>
+    <td>
+      <select name="LASTGENRE" id="LASTGENRE" size="1">
+        <?=mk_option($beets_cfg['LASTGENRE'], "no", "No");?>
+        <?=mk_option($beets_cfg['LASTGENRE'], "yes", "Yes");?>
+      </select>
+    </td>      
+    </tr>
+    <tr>
+      <td><a class="tooltip" href="#">LastFM Genre Source:<span class="classic">When looking up genres for albums or individual tracks, you can choose whether to use Last.fm tags on the album, the artist, or the track. For example, you might want all the albums for a certain artist to carry the same genre. Set the source configuration value to "album", "track", or "artist". The default is "album". When set to "track", the plugin will fetch both album-level and track-level genres for your music when importing albums.</span></a></td>
+      <td>
+        <select name="LASTGENRESOURCE" id="LASTGENRESOURCE" size="1">
+          <?=mk_option($beets_cfg['LASTGENRESOURCE'], "album", "Album");?>
+          <?=mk_option($beets_cfg['LASTGENRESOURCE'], "track", "Track");?>
+          <?=mk_option($beets_cfg['LASTGENRESOURCE'], "artist", "Artist");?>          
+        </select>
+      </td>
+    </tr>
+    <tr>
+    <td><a class="tooltip" href="#">Embed Artwork:<span class="classic">Enables the EmbedArt plugin.  Enable this to automatically embed discovered album art into imported files. You'll also want to enable the FetchArt Plugin to obtain the images to be embedded. Art will be embedded after each album is added to the library.</span></a></td>
+    <td>
+      <select name="EMBEDART" id="EMBEDART" size="1">
+        <?=mk_option($beets_cfg['EMBEDART'], "no", "No");?>
+        <?=mk_option($beets_cfg['EMBEDART'], "yes", "Yes");?>
+      </select>
+    </td>      
+    </tr>
+    <tr>
+    <td><a class="tooltip" href="#">Fetch Artwork:<span class="classic">Enables the FetchArt plugin. Use this to retrieve album art images from various sources on the Web and stores them as image files.</span></a></td>
+    <td>
+      <select name="FETCHART" id="FETCHART" size="1">
+        <?=mk_option($beets_cfg['FETCHART'], "no", "No");?>
+        <?=mk_option($beets_cfg['FETCHART'], "yes", "Yes");?>
+      </select>
+    </td>      
+    </tr>
+    <tr>
+    <td><a class="tooltip" href="#">Replay Gain:<span class="classic">Enables the ReplayGain plugin, a technique for normalizing audio playback levels. The plugin will automatically analyze albums and individual tracks as you import them. It writes tags to each file according to the ReplayGain specification; if your player supports these tags, it can use them to do level adjustment.</span></a></td>
+    <td>
+      <select name="REPLAYGAIN" id="REPLAYGAIN" size="1">
+        <?=mk_option($beets_cfg['REPLAYGAIN'], "no", "No");?>
+        <?=mk_option($beets_cfg['REPLAYGAIN'], "yes", "Yes");?>
+      </select>
+    </td>      
+    </tr>
+    </table>
+    
+    <div align="center">
+      <hr size="3" align="center" width="75%" color="grey" style="margin-top:20px;margin-bottom:18px">
+      <input type="submit" name="runCmd" value="Apply"><button type="button" onClick="done();">Done</button>
+    </div>   
+
+  </div>
+</form>
+
+
+<script type="text/javascript">
+function validateForm() {
+  // or here
+}
+
+</script>
+
+</body>
+</html>
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/beetsctl.php">
+<INLINE>
+<![CDATA[
+<?PHP
+  $configfile = "/boot/config/plugins/beets/beets.cfg";
+
+  $settings = array(
+    "DESTDIR", "LIBDIR", "ARTFILE", "THREADED", "ORIGDATE", "PERDISCNUM",
+    "CONVERT_STATE", "CONVERT_OPTS", "CONVERT_MAXBITRATE", "CONVERT_DESTINATION", "CONVERT_THREADS",
+    "PATH_DEFAULT", "PATH_SINGLETON", "PATH_COMPILATION",
+    "IMPORT_WRITE", "IMPORT_COPY", "IMPORT_MOVE", "IMPORT_RESUME", "IMPORT_INCREMENTAL", "IMPORT_FALLBACK", "IMPORT_TIMID", "IMPORT_LOG",
+    "LASTGENRE", "LASTGENRESOURCE", "EMBEDART", "FETCHART", "REPLAYGAIN",
+  );
+
+  $DESTDIR=$_POST['DESTDIR'];
+  $LIBDIR=$_POST['LIBDIR'];
+  $ARTFILE=$_POST['ARTFILE'];
+  $THREADED=$_POST['THREADED'];
+  $ORIGDATE=$_POST['ORIGDATE'];
+  $PERDISCNUM=$_POST['PERDISCNUM'];
+  $CONVERT_STATE=$_POST['CONVERT_STATE'];
+  $CONVERT_OPTS=$_POST['CONVERT_OPTS'];
+  $CONVERT_MAXBITRATE=$_POST['CONVERT_MAXBITRATE'];
+  $CONVERT_DESTINATION=$_POST['CONVERT_DESTINATION'];
+  $CONVERT_THREADS=$_POST['CONVERT_THREADS'];
+  $PATH_DEFAULT=$_POST['PATH_DEFAULT'];
+  $PATH_SINGLETON=$_POST['PATH_SINGLETON'];
+  $PATH_COMPILATION=$_POST['PATH_COMPILATION'];
+  $IMPORT_WRITE=$_POST['IMPORT_WRITE'];
+  $IMPORT_COPY=$_POST['IMPORT_COPY'];
+  $IMPORT_MOVE=$_POST['IMPORT_MOVE'];
+  $IMPORT_RESUME=$_POST['IMPORT_RESUME'];
+  $IMPORT_INCREMENTAL=$_POST['IMPORT_INCREMENTAL'];
+  $IMPORT_FALLBACK=$_POST['IMPORT_FALLBACK'];
+  $IMPORT_TIMID=$_POST['IMPORT_TIMID'];
+  $IMPORT_LOG=$_POST['IMPORT_LOG'];
+  $LASTGENRE=$_POST['LASTGENRE'];
+  $LASTGENRESOURCE=$_POST['LASTGENRESOURCE'];
+  $EMBEDART=$_POST['EMBEDART'];
+  $FETCHART=$_POST['FETCHART'];
+  $REPLAYGAIN=$_POST['REPLAYGAIN'];
+
+  switch ($_POST['cmd']) {
+    case 'apply':
+      save_config();
+      break;
+    default:
+    break;
+  }
+
+  function save_config () {
+
+    global $_POST, $configfile, $settings, $newline,
+    $DESTDIR, $LIBDIR, $ARTFILE, $THREADED, $ORIGDATE, $PERDISCNUM,
+    $CONVERT_STATE, $CONVERT_OPTS, $CONVERT_MAXBITRATE, $CONVERT_DESTINATION, $CONVERT_THREADS,
+    $PATH_DEFAULT, $PATH_SINGLETON, $PATH_COMPILATION,
+    $IMPORT_WRITE, $IMPORT_COPY, $IMPORT_MOVE, $IMPORT_RESUME, $IMPORT_INCREMENTAL, $IMPORT_FALLBACK, $IMPORT_TIMID, $IMPORT_LOG,
+    $LASTGENRE, $LASTGENRESOURCE, $EMBEDART, $FETCHART, $REPLAYGAIN;
+
+    $string .= "#beets configuration\n";
+    foreach ($_POST as $key=>$value) {
+      if (in_array($key, $settings)) {
+        $string .= "$key=\"$value\"\n";
+      }
+    }
+    write_string($configfile, $string, TRUE);
+
+    //example debug echo:
+    //echo "<script type='text/javascript'>alert('The value of CONVERT_OPTS is : $CONVERT_OPTS');</script>";
+
+    #beets global options
+    exec("sed -i \"s#directory:.*#directory: $DESTDIR#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#library:.*#library: $LIBDIR#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#art_filename:.*#art_filename: $ARTFILE#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#threaded:.*#threaded: $THREADED#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#original_date:.*#original_date: $ORIGDATE#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#per_disc_numbering:.*#per_disc_numbering: $PERDISCNUM#\" /boot/config/plugins/beets/config.yaml");
+
+    #beets convert settings
+    //exec("sed -i \"/convert:/ {N;s/convert:\n.*auto:.*/convert:\n    auto: $CONVERT_STATE/}\" /boot/config/plugins/beets/config.yaml");
+
+    exec("sed -i \"s#.*opts:.*#    opts: $CONVERT_OPTS#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#.*max_bitrate:.*#    max_bitrate: $CONVERT_MAXBITRATE#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#.*dest:.*#    dest: $CONVERT_DESTINATION#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#.*threads:.*#    threads: $CONVERT_THREADS#\" /boot/config/plugins/beets/config.yaml");
+
+    #beets path settings
+    exec("sed -i 's#.*default:.*#    default: $PATH_DEFAULT#' /boot/config/plugins/beets/config.yaml");
+    exec("sed -i 's#.*singleton:.*#    singleton: $PATH_SINGLETON#' /boot/config/plugins/beets/config.yaml");
+    exec("sed -i 's#.*comp:.*#    comp: $PATH_COMPILATION#' /boot/config/plugins/beets/config.yaml");
+
+    #beets import settings
+    exec("sed -i \"s#.*write:.*#    write: $IMPORT_WRITE#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#.*copy:.*#    copy: $IMPORT_COPY#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#.*move:.*#    move: $IMPORT_MOVE#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#.*resume:.*#    resume: $IMPORT_RESUME#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#.*incremental:.*#    incremental: $IMPORT_INCREMENTAL#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#.*quiet_fallback:.*#    quiet_fallback: $IMPORT_FALLBACK#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#.*timid:.*#    timid: $IMPORT_TIMID#\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s#.*log:.*#    log: $IMPORT_LOG#\" /boot/config/plugins/beets/config.yaml");
+
+    #beets plugin options
+    //exec("sed -i \"/lastgenre:/ {N;s/lastgenre:\n.*auto:.*/lastgenre:\n    auto: $LASTGENRE/}\" /boot/config/plugins/beets/config.yaml");
+    exec("sed -i \"s/.*source:.*/    source: $LASTGENRESOURCE/\" /boot/config/plugins/beets/config.yaml");
+    //exec("sed -i \"/embedart:/ {N;s/embedart:\n.*auto:.*/embedart:\n    auto: $EMBEDART/}\" /boot/config/plugins/beets/config.yaml");
+    //exec("sed -i \"/fetchart:/ {N;s#fetchart:\n.*auto:.*/fetchart:\n    auto: $FETCHART/}\" /boot/config/plugins/beets/config.yaml");
+    //exec("sed -i \"/replaygain:/ {N;s#replaygain:\n.*auto:.*/replaygain:\n    auto: $REPLAYGAIN/}\" /boot/config/plugins/beets/config.yaml");   
+    
+    #sigh... try as i might, i cannot fathom why the commented out seds above do not work when executed via php exec command.  the only difference
+    #in their syntax is the use of multiline and sed groupings.  as i had originally written this in bash, i've done a cheap hack to perform these
+    #problematic seds by calling a function in the rc script.
+    
+    exec("/etc/rc.d/rc.beets write_yaml");
+
+  }
+
+  function write_string ($file, $contents, $overwrite) {
+    if (file_exists($file)) {
+      if ($overwrite)
+          unlink($file);
+          touch($file);
+    }
+    else {
+      touch($file);
+    }
+
+    $fp = @fopen($file, 'a');
+    @flock($fp, LOCK_EX);
+    @fwrite($fp, $contents);
+    @flock($fp, LOCK_UN);
+    @fclose($fp);
+  }
+
+?>
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/etc/rc.d/rc.&name;" Mode="0770">
+<INLINE>
+<![CDATA[
+#!/bin/bash
+
+write_yaml()
+{
+  #see comment in beetsctl.php
+  
+  #beets global options
+  #sed -i "s#directory:.*#directory: $DESTDIR#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#library:.*#library: $LIBDIR#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#art_filename:.*#art_filename: $ARTFILE#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#threaded:.*#threaded: $THREADED#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#original_date:.*#original_date: $ORIGDATE#" /boot/config/plugins/beets/config.yaml  
+  #sed -i "s#library:.*#library: $PERDISCNUM#" /boot/config/plugins/beets/config.yaml
+  
+  #beets convert settings
+  sed -i "/convert:/ {N;s/convert:\n.*auto:.*/convert:\n    auto: $CONVERT_STATE/}" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#.*opts:.*#    opts: $CONVERT_OPTS#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#.*max_bitrate:.*#    max_bitrate: $CONVERT_MAXBITRATE#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#.*dest:.*#    dest: $CONVERT_DESTINATION#" /boot/config/plugins/beets/config.yaml  
+  #sed -i "s#.*threads:.*#    threads: $CONVERT_THREADS#" /boot/config/plugins/beets/config.yaml 
+  
+  #beets path settings
+  #sed -i "s#.*default:.*#    default: $PATH_DEFAULT#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#.*singleton:.*#    singleton: $PATH_SINGLETON#" /boot/config/plugins/beets/config.yaml  
+  #sed -i "s#.*comp:.*#    comp: $PATH_COMPILATION#" /boot/config/plugins/beets/config.yaml 
+  
+  #beets import settings
+  #sed -i "s#.*write:.*#    write: $IMPORT_WRITE#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#.*copy:.*#    copy: $IMPORT_COPY#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#.*move:.*#    move: $IMPORT_MOVE#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#.*resume:.*#    resume: $IMPORT_RESUME#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#.*incremental:.*#    incremental: $IMPORT_INCREMENTAL#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#.*quiet_fallback:.*#    quiet_fallback: $IMPORT_FALLBACK#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#.*timid:.*#    timid: $IMPORT_TIMID#" /boot/config/plugins/beets/config.yaml
+  #sed -i "s#.*log:.*#    log: $IMPORT_LOG#" /boot/config/plugins/beets/config.yaml
+  
+  #beets plugin options
+  sed -i "/lastgenre:/ {N;s/lastgenre:\n.*auto:.*/lastgenre:\n    auto: $LASTGENRE/}" /boot/config/plugins/beets/config.yaml
+  #sed -i "s/.*source:.*/    source: $LASTGENRESOURCE/" /boot/config/plugins/beets/config.yaml
+  sed -i "/embedart:/ {N;s/embedart:\n.*auto:.*/embedart:\n    auto: $EMBEDART/}" /boot/config/plugins/beets/config.yaml
+  sed -i "/fetchart:/ {N;s/fetchart:\n.*auto:.*/fetchart:\n    auto: $FETCHART/}" /boot/config/plugins/beets/config.yaml
+  sed -i "/replaygain:/ {N;s/replaygain:\n.*auto:.*/replaygain:\n    auto: $REPLAYGAIN/}" /boot/config/plugins/beets/config.yaml
+
+}
+
+# read our configuration
+source /boot/config/plugins/beets/beets.cfg
+
+case "$1" in
+  'write_yaml')
+    write_yaml
+  ;;
+  *)
+  echo "usage $0 write_yaml"
+esac
+]]>
+</INLINE>
+</FILE>
+
+<FILE Mode="0770" Run="/bin/bash">
+<INLINE>
+#!/bin/bash
+if [ "&devplugin;" == "true" ]; then
+  if [ -f /boot/config/plugins/&name;.php ]; then
+    rm -f /usr/local/emhttp/plugins/&name;/&name;.php
+    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+  else
+    mv /usr/local/emhttp/plugins/&name;/&name;.php /boot/config/plugins/&name;.php
+    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+  fi
+  if [ -f /boot/config/plugins//usr/local/emhttp/pluginsctl.php ]; then
+    rm -f /usr/local/emhttp/plugins/&name;/&name;ctl.php
+    ln -s /boot/config/plugins/&name;ctl.php /usr/local/emhttp/plugins/&name;/&name;ctl.php
+  else
+    mv /usr/local/emhttp/plugins/&name;/&name;ctl.php /boot/config/plugins/&name;ctl.php
+    ln -s /boot/config/plugins/&name;ctl.php /usr/local/emhttp/plugins/&name;/&name;ctl.php
+  fi
+  if [ -f /boot/config/plugins/rc.&name; ]; then
+    rm -f /etc/rc.d/rc.&name;
+    ln -s /boot/config/plugins/rc.&name; /etc/rc.d/rc.&name;
+  else
+    mv /etc/rc.d/rc.&name; /boot/config/plugins/rc.&name;
+    ln -s /boot/config/plugins/rc.&name; /etc/rc.d/rc.&name;
+  fi
+fi
+</INLINE>
+</FILE>
+
+</PLUGIN>
