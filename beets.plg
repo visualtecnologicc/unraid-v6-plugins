@@ -37,8 +37,7 @@ Plugin file locations:
 
  /etc/rc.d/rc.beets                                                     # plugin control script
  
- /usr/local/emhttp/plugins/beets/beets.page                             # page file for webGui menu system
- /usr/local/emhttp/plugins/beets/beets.php                              # webGui page code (settings)
+ /usr/local/emhttp/plugins/beets/beets.page                             # webGui page code (settings)
  /usr/local/emhttp/plugins/beets/beetsctl.php                           # webGui control code (on submit)
  /usr/local/emhttp/plugins/beets/beets.png                              # plugin icon file
  /usr/local/emhttp/plugins/beets/device_status.png                      # plugin webgui image file
@@ -208,6 +207,12 @@ iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAJ0UlEQVRogd2aa2wU1xXHf2fmrtder9dg
 </INLINE>
 </FILE>
 
+<FILE Name="/usr/local/emhttp/plugins/&name;/icons/&name;.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAC4jAAAuIwF4pT92AAACFElEQVR42o2SMUwTURjHf6+99u7aowpFVKSBQUtJCdhUE8WASmQQHTAORKODk0aNg4Mzk4ujwc0wORNd1IEQFyajMUqIIqYBIkERKLb22rt7z6ESodLG//TlJd/vve/3PaEYYWt6VIupY1xXiCCAQAkQNgQfT4rpHBXRKg9MzKFrdJ/vI5bwkApQ7/iWechrKRSjSiCrAnpVIh5n18AAbd1TLM5MMp+JYpqXSR45x8EzIBbh0/jWHt9m0amSwSDy0j2OnirhOU+YmblB6riO3/+czx8u0p5OEB3qV4n0joB9OINXSfYcoqE1RED3I8RerGgjYTOI5l8g+/026RMh/FdOq6T1D8BDtPXT2ilANGDU3ySVvsvE+DI/8yeJxSMYIQ9PNmPtBsfY0YH4y6OPWOoY/gM2TrFEKFzAsR2kVyndR41Ipr/+YvBFHa4WQbdCBIw/m6kGUKIS0khHV57epyFsTDRdoqoDFEiJ2rbnNabeB5iTBe68NND0mh/JwXPXsLN16GGNjaJivRDk1n4wAh5jC2XZ219QCfCWya/mefCqnre25EsRhvf4aLEiPDvrAJUOtgFKSHeJ3HozI7MxAlGXRLRAixVmuKd8gWvXHMHGKWVYX7WZ6MryaCHCYbeJC+0BXNtA0xUga40wT+5HE+GwwhIr3O9YAeZYmi0LFsrBlQVcb0eAD/VxlDdj/EccRHGz/g2q78bKSBjMqAAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
 <FILE Name="/usr/local/emhttp/plugins/&name;/device_status.png" Type="base64">
 <INLINE>
 iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFJSURBVDiNtZI9awJBEIafVctUSv6KvUUCEpPiDhsFsT2CVcSt5OqzlWBvKzb5QDCCvX8lYL2zsm4alTtRMYRM987OPLzzssp7z1+qcKo5m81u8/n8s1KqDuC9nzjnXqvV6vdVAOecds69pFoxcAN0TwKm0+kSWG+326Rer69EpA2glLrbOfgC2kB3MpmUc7mcBophGFZyACKiRYTNZqN3uiQiBEGwCIJgISKISAnAWquNMYiIPjhoNBorINzbMsZkbKZ1s9kM028FgNFo9AE8AJ9RFNVEJANI6+PZAkAURbVzC8f6eLYAMBgMyt57DRS11pVLgCRJlsBaKZX0er3VIURrLcaYfYiZpbQ2xmhrbTbEfr+fCeaSgziOM4Grf/nKnU7nJHU4HKqrACIy997fp3tKqfmp2bMntFqtN+BxJ9/H4/HTrwDX1g/Ee8aNyc3z/wAAAABJRU5ErkJggg==
@@ -230,22 +235,17 @@ iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29m
 <INLINE>
 **&name; Plugin**
 
-This plugin installs and provides support for Beets music tagger
+This plugin provides support for Beets music tagger
 </INLINE>
 </FILE>
 
 <FILE Name="/usr/local/emhttp/plugins/&name;/&name;.page">
 <INLINE>
+<![CDATA[
 Menu="NetworkServices"
 Title="Beets"
-Icon="&name;.png"
+Icon="beets.png"
 ---
-</INLINE>
-</FILE>
-
-<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.php">
-<INLINE>
-<![CDATA[
 <?PHP
 $beets_cfg = parse_ini_file( "/boot/config/plugins/beets/beets.cfg");
 ?>
@@ -738,12 +738,12 @@ esac
 <INLINE>
 #!/bin/bash
 if [ "&devplugin;" == "true" ]; then
-  if [ -f /boot/config/plugins/&name;.php ]; then
-    rm -f /usr/local/emhttp/plugins/&name;/&name;.php
-    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+  if [ -f /boot/config/plugins/&name;.page ]; then
+    rm -f /usr/local/emhttp/plugins/&name;/&name;.page
+    ln -s /boot/config/plugins/&name;.page /usr/local/emhttp/plugins/&name;/&name;.page
   else
-    mv /usr/local/emhttp/plugins/&name;/&name;.php /boot/config/plugins/&name;.php
-    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+    mv /usr/local/emhttp/plugins/&name;/&name;.page /boot/config/plugins/&name;.page
+    ln -s /boot/config/plugins/&name;.page /usr/local/emhttp/plugins/&name;/&name;.page
   fi
   if [ -f /boot/config/plugins//usr/local/emhttp/pluginsctl.php ]; then
     rm -f /usr/local/emhttp/plugins/&name;/&name;ctl.php
