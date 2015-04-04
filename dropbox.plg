@@ -30,8 +30,7 @@ Plugin file locations:
  
  /etc/rc.d/rc.dropbox                                               # plugin control script
 
- /usr/local/emhttp/plugins/dropbox/dropbox.page                     # page file for webGui menu system
- /usr/local/emhttp/plugins/dropbox/dropbox.php                      # webGui page code (settings)
+ /usr/local/emhttp/plugins/dropbox/dropbox.page                     # webGui page code (settings)
  /usr/local/emhttp/plugins/dropbox/dropbox.png                      # plugin icon file
  /usr/local/emhttp/plugins/dropbox/device_status.png                # plugin webgui image file
  /usr/local/emhttp/plugins/dropbox/new_config.png                   # plugin webgui image file
@@ -666,12 +665,12 @@ source /boot/config/plugins/&name;/&name;.cfg
 <INLINE>
 #!/bin/bash
 if [ "&devplugin;" == "true" ]; then
-  if [ -f /boot/config/plugins/&name;.php ]; then
-    rm -f /usr/local/emhttp/plugins/&name;/&name;.php
-    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+  if [ -f /boot/config/plugins/&name;.page ]; then
+    rm -f /usr/local/emhttp/plugins/&name;/&name;.page
+    ln -s /boot/config/plugins/&name;.page /usr/local/emhttp/plugins/&name;/&name;.page
   else
-    mv /usr/local/emhttp/plugins/&name;/&name;.php /boot/config/plugins/&name;.php
-    ln -s /boot/config/plugins/&name;.php /usr/local/emhttp/plugins/&name;/&name;.php
+    mv /usr/local/emhttp/plugins/&name;/&name;.page /boot/config/plugins/&name;.page
+    ln -s /boot/config/plugins/&name;.page /usr/local/emhttp/plugins/&name;/&name;.page
   fi
   if [ -f /boot/config/plugins/rc.&name; ]; then
     rm -f /etc/rc.d/rc.&name;
