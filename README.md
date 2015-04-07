@@ -32,8 +32,7 @@ SSH - (https://raw.githubusercontent.com/overbyrn/unraid-v6-plugins/master/ssh.p
 1. Navigate to the Plugins tab on the Unraid interface<br>
 2. Click the 'install plugin' sub tab<br>
 3. Either paste the LINK or navigate to the .PLG file and press install<br>
-4. Go to the Unraid Settings page, click on the app icon, setup the way you want, and hit apply.<br>
-5. Go to UnRAID WebGui -> Settings -> &lt;Plugin Name&gt; and configure your initial settings<br>
+4. Go to UnRAID WebGui -> Settings -> &lt;Plugin Name&gt; and configure your initial settings<br>
 </p>
 
 ***
