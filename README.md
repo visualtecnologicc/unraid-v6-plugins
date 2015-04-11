@@ -16,7 +16,6 @@ This is my collection of plugins for UnRAID v6;
 * **OpenSSH**: Provides encrypted communication sessions over a computer network using the SSH protocol.  SSH is typically used to log into a remote machine and execute commands, but it also supports tunneling, forwarding TCP ports and it can transfer files using the associated SSH file transfer (SFTP) or secure copy (SCP) protocols.
 
 * **Logitech Media Server (LMS)**: Logitech Media Server (formerly Squeezebox Server, SlimServer and SqueezeCenter) is a streaming audio server supported by Logitech (formerly Slim Devices), developed in particular to support their Squeezebox range of digital audio receivers. Plugin originally developed by Tom (developer of UnRAID) and later enhanced and maintained by Alex R Berg.  My thanks to these and others who have contributed to the plugin as this version would not be possible without their help.<br>
-# Please be aware this LMS plugin is not fully working. Do not install this plugin for the moment. I will update the unRAID forum thread when it is working.
 
 ## Download Links
 Use the following direct links to download each plugin:
