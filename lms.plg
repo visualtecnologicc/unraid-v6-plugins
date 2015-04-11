@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name       "lms">
 <!ENTITY author     "overbyrn">
-<!ENTITY version    "2015.03.25">
+<!ENTITY version    "2015.04.11">
 <!ENTITY category   "Network Services">
 <!ENTITY pluginDIR   "/boot/config/plugins/&name;">
 <!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
@@ -40,8 +40,7 @@ Plugin file locations:
  /usr/local/emhttp/plugins/lms/event/disks_mounted                              # script to execute for emhttp event
  /usr/local/emhttp/plugins/lms/event/unmounting_disks                           # script to execute for emhttp event
  
- /var/log/plugins/lms                                                           # created upon install success
- /usr/local/lms                                                                 # application installation location
+ /usr/local/lms                                                                 # default installation location
  /var/run/lms/lms.pid                                                           # run-time pid file
 
 -->
@@ -82,7 +81,13 @@ rm -rf /var/run/&name;
 
 <FILE Name="/usr/local/emhttp/plugins/&name;/&name;.png" Type="base64">
 <INLINE>
-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"
+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
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/icons/&name;.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAC9klEQVR42k2Tz4sbZRjHP88770wmmcxks9ls11LdQClqCxZZ8SKiUH/0ouChaA+t4K166MFj8SII/gM99KYWWdGDelKpVi+CCkFKa60WZNst3WU3m0myM5lJMvO+Hpa1fuF7evjC9/k8PHLK/uGcp3mugjqdYyKAjGJWYkwBRmHFwVEKRCFSwdEeMsgoVi8yuiTf27W3f2T02geXv1pkVITUa4YwMNSqBk8bAGaFMM4Vo8QhzRSBk7z75iv3X6bxpfxk168+f/njFkkR0mqULDQLgppBKVDKAoARCgPpWNGLNTtDh7re/eHM2W09xoSMphHtZsFSe0arnhJ5OfsqrWJn0kAraEQlWlsQ6MXhBDPRghWCmmGhWVD17Y1jJzpHCVr8T53O71fvdtcewtdTDh5IMGWLfCIAGhREQblXW6xG1AazscEiCHM4XhWlmPNT0lmFhpdzeLHPIGmDiAagVt3b2Vi5y3T8Uve7DRDA8t7KSnEQz5s7/EgeUyR/3+9V5x9upf0/N1oACqzgaYtSFiV2xDTbCwMIFngUv3acWnCKVptQTw5RqRBVJoIVLQBlqShLi4V1dmPKMnxAwGCwViFSRzmUVg6g3f2ptgBZJidffHJjHu0t4TfJJl743KGbr9OeX8aJvqa/8wT18FvSHSjRWGFrGBqkr8HaI68+duMzjp4AWCMbU06Sf3j6WRelAN5hbf367TshW+niC88c375Cr088WgaDMlh7++ebCzlWXJzKh9y7wzCPuqS7AW7tF5LR9Mpfx7i+2cGXyTbZrFjtPsVO7IPYvSt8c2tl6bf3C9pzCaIfR+Dkp5/4+E5MXkb/4biVL1+7dq/DYCjEu2Kw6ACdUJWUrXiObOoTBZaKB0pBTuUBSwPTKQxTYTcV6s4gwBmpgvKLcxfOdPFJ6A80mz2Xrb5LPHQZJXuOhy7bfZfNnks80Hg2fevC6V8nlJ/L/jt7yBtjygiEjNl0hjUGawFclKMAB1EejvZRw5zp6kU+uvQvCyNRdexgl6EAAAAASUVORK5CYII=
 </INLINE>
 </FILE>
 
@@ -108,7 +113,7 @@ iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29m
 <INLINE>
 **&name; Plugin**
 
-This Plugin provides Logitech Media Server (LMS) support for unRAID v6
+This Plugin provides Logitech Media Server (LMS) support for unRAID
 </INLINE>
 </FILE>
 
@@ -217,8 +222,8 @@ $updates_exist = "false";
       <?if ($lms_running=="yes"):?>
         <tr>
         <td width="30%">
-          <form name="lms_start_stop" method="POST" action="/update.htm" target="progressFrame">
-            <input type="hidden" name="cmd" value="/etc/rc.d/rc.lms stop">
+          <form name="lms_start_stop" method="POST" action="/plugins/lms/lmsctl.php" target="progressFrame">
+            <input type="hidden" name="cmd" value="stop">
             <input type="submit" name="runCmd" value="Stop">
           </form>      
         </td>
@@ -226,8 +231,8 @@ $updates_exist = "false";
         </tr>
         <tr>
         <td width="30%">
-          <form name="lms_restart" method="POST" action="/update.htm" target="progressFrame">
-            <input type="hidden" name="cmd" value="/etc/rc.d/rc.lms restart">
+          <form name="lms_restart" method="POST" action="/plugins/lms/lmsctl.php" target="progressFrame">
+            <input type="hidden" name="cmd" value="restart">
             <input type="submit" name="runCmd" value="Restart">
           </form>  
         </td>
@@ -237,8 +242,8 @@ $updates_exist = "false";
       <?else:?>
         <tr>
         <td width="30%">
-          <form name="lms_start" method="POST" action="/update.htm" target="progressFrame">
-            <input type="hidden" name="cmd" value="/etc/rc.d/rc.lms buttonstart">
+          <form name="lms_start" method="POST" action="/plugins/lms/lmsctl.php" target="progressFrame">
+            <input type="hidden" name="cmd" value="start">
             <input type="submit" name="runCmd" value="Start">
           </form>
         </td>
@@ -366,6 +371,55 @@ checkRUNNING(document.lms_settings);
 </INLINE>
 </FILE>
 
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;ctl.php">
+<INLINE>
+<![CDATA[
+<?PHP
+
+switch ($_POST['cmd']) {
+  case 'start':
+    start();
+    break;
+  case 'restart':
+    restart();
+    break;
+  case 'stop':
+    stop();
+    break;
+  default:
+  break;
+}
+
+function start() {
+  //echo "<script type='text/javascript'>alert('start');</script>";
+  $lms_cfg = parse_ini_file("/boot/config/plugins/lms/lms.cfg");
+  $installdir = $lms_cfg['INSTALLDIR'];
+  $runcmd = "export LANG=en_US.utf8;$installdir/slimserver.pl --daemon --user nobody --group users --httpport 9000 --pidfile /var/run/lms/lms.pid --cachedir $installdir/Cache  --prefsdir $installdir/prefs";
+  exec("$runcmd");
+}
+
+function stop() {
+  //echo "<script type='text/javascript'>alert('stop');</script>";
+  exec("/etc/rc.d/rc.lms stop");
+}
+
+function restart() {
+  //echo "<script type='text/javascript'>alert('restart');</script>";
+  stop();
+  start();  
+}
+
+?>
+
+<html>
+<head><script>var goback=parent.location;</script></head>
+<body onLoad="parent.location=goback;"</body>
+</html>
+]]>
+</INLINE>
+</FILE>
+
+
 <FILE Name="/etc/rc.d/rc.&name;" Mode="0770">
 <INLINE>
 <![CDATA[
@@ -397,8 +451,9 @@ lms_start()
   sleep 1
 
   export LANG=en_US.utf8
-  CMDLINE="$INSTALLDIR/slimserver.pl --dameon --user nobody --group users --httpport $PORT --pidfile /var/run/lms/lms.pid --cachedir $INSTALLDIR/Cache  --prefsdir $INSTALLDIR/prefs > /dev/null 2>&1"
-  nohup sudo -u nobody $CMDLINE > /var/log/plugins/lms 2>&1 &
+
+  RUNCMD="$INSTALLDIR/slimserver.pl --daemon --user nobody --group users --httpport $PORT --pidfile /var/run/lms/lms.pid --cachedir $INSTALLDIR/Cache  --prefsdir $INSTALLDIR/prefs"
+  nohup $RUNCMD > /tmp/lms.out & 
 
   TIMER=0
   while [ ! -e /var/run/lms/lms.pid ]; do
@@ -739,6 +794,7 @@ esac
 ]]>
 </INLINE>
 </FILE>
+
 
 <!-- event handler to start lms when array online (if dropbox service set to enable) -->
 <FILE Name="/usr/local/emhttp/plugins/&name;/event/disks_mounted" Mode="0770">
