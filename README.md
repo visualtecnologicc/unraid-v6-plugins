@@ -25,6 +25,7 @@ DenyHosts - (https://raw.githubusercontent.com/overbyrn/unraid-v6-plugins/master
 Dropbox - (https://raw.githubusercontent.com/overbyrn/unraid-v6-plugins/master/dropbox.plg)<br>
 NZBGet - (https://raw.githubusercontent.com/overbyrn/unraid-v6-plugins/master/nzbget.plg)<br>
 SSH - (https://raw.githubusercontent.com/overbyrn/unraid-v6-plugins/master/ssh.plg)<br>
+LMS - (https://raw.githubusercontent.com/overbyrn/unraid-v6-plugins/master/lms.plg)<br>
 
 ## Installation
 <p>
