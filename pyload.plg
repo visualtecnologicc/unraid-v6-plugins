@@ -712,6 +712,7 @@ pyload_install()
   # install from pyLoad GitHub to Install Dir as set in plugin webgui page  
   echo "Cloning from GitHub [branch:$BRANCH] [URL:$INSTALL_URL] into [$INSTALLDIR] ..."
   sleep 1
+  export GIT_SSL_NO_VERIFY=true
   git clone -b $BRANCH $INSTALL_URL $INSTALLDIR   # eg. git clone -b stable https://github.com/pyload/pyload.git /mnt/disk1/pyload
   echo "... OK"
   sleep 1
