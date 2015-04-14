@@ -1,0 +1,897 @@
+<?xml version='1.0' standalone='yes'?>
+
+<!DOCTYPE PLUGIN [
+<!ENTITY name       "pyload">
+<!ENTITY author     "overbyrn">
+<!ENTITY version    "2015.04.08">
+<!ENTITY category   "Network Services">
+<!ENTITY pluginDIR   "/boot/config/plugins/&name;">
+<!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
+<!ENTITY packageURL "https://github.com/overbyrn/unraid-v6-plugins/releases/download/&name;">
+<!ENTITY devplugin  "false">
+]>
+
+<PLUGIN  name="&name;"
+         author="&author;"
+         version="&version;"
+         category="&category;">
+
+<!--
+
+Copyright 2013, Rich Manton (overbyrn)
+
+This Plugin provides pyLoad support for unRAID.
+
+Plugin file locations:
+ /boot/plugins/pyload.plg                                                      # this file
+
+ /usr/local/emhttp/plugins/pyload/pyload.page                                  # webGui page code (settings)
+
+ /usr/local/emhttp/plugins/pyload/pyload.png                                   # plugin icon file
+ /usr/local/emhttp/plugins/pyload/device_status.png                            # plugin webgui image file
+ /usr/local/emhttp/plugins/pyload/new_config.png                               # plugin webgui image file
+ /usr/local/emhttp/plugins/pyload/information.png                              # plugin webgui image file
+
+ /boot/config/plugins/pyload/pyload.cfg                                        # non-volatile configuration
+ /boot/config/plugins/pyload/files.db                                          # default pyload sqlite db (contains initial admin userid)
+ /etc/rc.d/rc.pyload                                                           # plugin control script
+
+ /usr/local/emhttp/plugins/pyload/event/disks_mounted                          # script to execute for emhttp event
+ /usr/local/emhttp/plugins/pyload/event/unmounting_disks                       # script to execute for emhttp event
+ /var/log/plugins/pyload                                                       # created upon install success
+ /usr/local/pyload                                                             # application installation location
+ /var/run/pyload/pyload.pid                                                    # run-time pid file
+
+-->
+
+<FILE Name="/boot/packages/git-1.8.4-x86_64-1.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/git-1.8.4-x86_64-1.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/pycurl-7.19.0-x86_64-2.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/pycurl-7.19.0-x86_64-2.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/unrar-5.0.14-x86_64-1sl.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/unrar-5.0.14-x86_64-1sl.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/infozip-6.0-x86_64-2.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/infozip-6.0-x86_64-2.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/pil-1.1.7-x86_64-4.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/pil-1.1.7-x86_64-4.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/libjpeg-v8a-x86_64-2.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/libjpeg-v8a-x86_64-2.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/libpng-1.4.12-x86_64-1.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/libpng-1.4.12-x86_64-1.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/libtiff-3.9.7-x86_64-1.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/libtiff-3.9.7-x86_64-1.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/spidermonkey-1.5-x86_64-1ces.tgz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/spidermonkey-1.5-x86_64-1ces.tgz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/tesseract-3.02.02-x86_64-1_slack.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/tesseract-3.02.02-x86_64-1_slack.txz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/pycrypto-2.6-x86_64-1alien.tgz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/pycrypto-2.6-x86_64-1alien.tgz</URL>
+</FILE>
+
+<FILE Name="/boot/packages/p7zip-9.20.1-x86_64-1sl.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/p7zip-9.20.1-x86_64-1sl.txz</URL>
+</FILE>
+
+<FILE Name="&pluginDIR;/files.db">
+<URL>-q --no-check-certificate &packageURL;/files.db</URL>
+</FILE>
+
+<FILE Name="/boot/config/plugins/&name;/&name;.cfg">
+<INLINE>
+SERVICE="disable"
+RUNAS="nobody"
+INSTALLDIR="/mnt/disk1/pyload"
+CREATE_LOG="True"
+LOG_DIR="/mnt/disk1/pyload/logs"
+LOG_COUNT="3"
+DOWNLOAD_DIR="/mnt/disk1/pyload/downloads"
+MIN_FREE_SPACE="200"
+INSTALL_HOST="0.0.0.0"
+INSTALL_PORT="8085"
+MAX_PARALLEL_DOWNLOAD="3"
+LIMIT_DOWNLOAD_SPEED="False"
+DOWNLOAD_SPEED="-1"
+MAX_CONNECTIONS_PER_DOWNLOAD="3"
+INSTALL_URL="https://github.com/pyload/pyload.git"
+BRANCH="stable"
+</INLINE>
+</FILE>
+
+<FILE Name="/boot/config/plugins/&name;/&name;.conf">
+<INLINE>
+<![CDATA[
+version: 1
+
+remote - "Remote":
+    bool nolocalauth : "No authentication on local connections" = True
+    int port : "Port" = 7227
+    ip listenaddr : "Adress" = 0.0.0.0
+    bool activated : "Activated" = True
+
+log - "Log":
+    bool file_log : "File Log" = True
+    folder log_folder : "Folder" = Logs
+    int log_count : "Count" = 5
+    int log_size : "Size in kb" = 100
+    bool log_rotate : "Log Rotate" = True
+
+permission - "Permissions":
+    str group : "Groupname" = users
+    bool change_dl : "Change Group and User of Downloads" = False
+    bool change_file : "Change file mode of downloads" = False
+    str user : "Username" = user
+    str file : "Filemode for Downloads" = 0644
+    bool change_group : "Change group of running process" = False
+    str folder : "Folder Permission mode" = 0755
+    bool change_user : "Change user of running process" = False
+
+general - "General":
+    en;de;fr;it;es;nl;sv;ru;pl;cs;sr;pt_BR language : "Language" = en
+    folder download_folder : "Download Folder" = Downloads
+    bool debug_mode : "Debug Mode" = False
+    bool checksum : "Use Checksum" = False
+    int min_free_space : "Min Free Space (MB)" = 200
+    bool folder_per_package : "Create folder for each package" = True
+    int renice : "CPU Priority" = 0
+
+ssl - "SSL":
+    bool activated : "Activated"= False
+    file cert : "SSL Certificate" = ssl.crt
+    file key : "SSL Key" = ssl.key
+    
+webinterface - "Webinterface":
+    bool activated : "Activated" = True
+    builtin;threaded;fastcgi;lightweight server : "Server" = threaded
+    bool https : "Use HTTPS" = False
+    ip host : "IP" = 0.0.0.0
+    int port : "Port" = 8085
+    str template : "Template" = default
+    str prefix: "Path Prefix" =
+
+proxy - "Proxy":
+    str address : "Address" = "localhost"
+    int port : "Port" = 7070
+    http;socks4;socks5 type : "Protocol" = http
+    str username : "Username" = None
+    password password : "Password" = None
+    bool proxy : "Use Proxy" = False    
+
+reconnect - "Reconnect":
+    bool activated : "Use Reconnect" = False
+    str method : "Method" = None
+    time startTime : "Start" = 0:00
+    time endTime : "End" = 0:00
+
+download - "Download":
+    int chunks : "Max connections for one download" = 3
+    int max_downloads : "Max Parallel Downloads" = 3
+    int max_speed : "Max Download Speed in kb/s" = -1
+    bool limit_speed : "Limit Download Speed" = False
+    str interface : "Download interface to bind (ip or Name)" = None
+    bool ipv6 : "Allow IPv6" = False
+    bool skip_existing : "Skip already existing files" = False
+
+downloadTime - "Download Time":
+    time start : "Start" = 0:00
+    time end : "End" = 0:00
+]]>
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="install">
+<INLINE>
+if [ -d /usr/local/emhttp/plugins/&name; ]; then
+  rm -r /usr/local/emhttp/plugins/&name;
+fi;
+if [ -f /etc/rc.d/rc.&name; ]; then
+  rm -f /etc/rc.d/rc.&name;
+fi;
+
+# create pyload-writable directory for pid file
+[[ ! -d /var/run/&name; ]] &amp;&amp; mkdir -m 0777 -p /var/run/&name;
+
+</INLINE>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+rm -r /usr/local/emhttp/plugins/&name;
+rm -f /etc/rc.d/rc.&name;
+rm -rf /boot/config/plugins/&name;
+rm -rf /usr/local/&name;
+rm -rf /var/run/&name;
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.png" Type="base64">
+<INLINE>
+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
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/icons/&name;.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAACXBIWXMAAA7EAAAOxAGVKw4bAAACX0lEQVR42pWQzYpcZRiEn3q/7/x0z/RMJzgzCwM6G0EQjOLKHxDRhRpBEXXlnXgDLr0SVwa8AlGRYFxIQCOOSXQckzjT092nzznf+7oQF8psrEUtiqKoKi0jYoITyHuIBlcgQAKFEQKisFahirqvbKzPI5iqckMeJcQQhYpVmBJQqwQEgRR4BCLwqHkoY+OwlwotCSGP4o50k/Lr6/z22fGPP2XOc8sitSyWNWfrhvNVzbVL358eLN+puU3D+7PgoBFSHsPUAR9p+cXx5388zllV0y0Km7UxdmJ5VjN04uERzcFQMrdiwxOnDa/sOw05q7hFsuubu8es+susu8zWquOtwztMlgPdCcyW/ae2+1Lm+ph4MAx8XYsXIqJVBotG4ZRaLGzC5N7iy3e3rzzDV8+KBTT9KFalcNKLO11wH2cTQS8BFoDh9tp0PkeLnjebH57k972Kb8fMrU3iqDOO+szdEH/GiA2ZwywmkRwscIMSHzN/2T7cvfH2dNhO3Hc4K8AQ7MbIDj2P2JqnrfBGk3lxDlMBqMQY4IxUAGQesOaTX6Z8V0Q1OFdsoEqFRycTru2LXUZ2NJBp6DEhAqMOqPFiJJypj6xHuBfO7U3D/kGw5/ihKJflJIwBw8KEEAkCQEAT21ydj6SApQcnfsrNn1sem8k8EFSMNAQMWQbCgL9JCVqJ52fi1ZnTIjpanruUeGoLTBiICqihgsyF2FLLB7OOG13gPuG9Hdi60KmIiP+KBUgM3vPNqTBVXJ2VqFPS/wgQPUYqAM6YgoZ0QYMLJ5hDsURhSECIiuT//PRv/AWNrCaMzDt72QAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/device_status.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAFJSURBVDiNtZI9awJBEIafVctUSv6KvUUCEpPiDhsFsT2CVcSt5OqzlWBvKzb5QDCCvX8lYL2zsm4alTtRMYRM987OPLzzssp7z1+qcKo5m81u8/n8s1KqDuC9nzjnXqvV6vdVAOecds69pFoxcAN0TwKm0+kSWG+326Rer69EpA2glLrbOfgC2kB3MpmUc7mcBophGFZyACKiRYTNZqN3uiQiBEGwCIJgISKISAnAWquNMYiIPjhoNBorINzbMsZkbKZ1s9kM028FgNFo9AE8AJ9RFNVEJANI6+PZAkAURbVzC8f6eLYAMBgMyt57DRS11pVLgCRJlsBaKZX0er3VIURrLcaYfYiZpbQ2xmhrbTbEfr+fCeaSgziOM4Grf/nKnU7nJHU4HKqrACIy997fp3tKqfmp2bMntFqtN+BxJ9/H4/HTrwDX1g/Ee8aNyc3z/wAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/new_config.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAN1wAADdcBQiibeAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAHcSURBVDiNpdKxa5NhEAbwX4uDUEFEpzo6FNShIohD0SVQwQyVDEJ0MEMxoNiohYIFhUqQYizRLNEPWxyMoGaRKiLBRUUd/AMqOAhVBF1Epd/hUId+FZF0EA9eXu7uuXuf97nrWV5e9j+2bq1Ep9PpQz8+5XK5b51OZwiXcC+Xy11bxfV0YzA/P38Cl/E1u6/jDb5jfz6f/9GVQbvdTrAXO1HD+UKhsNRut3MYwMlCofAjw1ZR+82g1WptwnNsx91isXh4tXGr1dqKRTzDKYzgAnb1zM7O9uIIzmAQd3EII6VS6RHMzc314T02/0H4YqlUOr8uIrbiCrbgeLlcvtFsNs/hfrPZfImx7Fub8Rp3sFAulx//FrFerw8iwb5KpbJUr9fXYyl76QOGMuozlUpl8U/duk4BpqenZ3A6cxcwNDEx8eVvXG/XakTE2Yi4HREiYiAiHk5NTfX9jevKYHJysh83cQy3MJylniBfrVZ/rtlgfHx8g5VxDeKVlZE9wJ4M0sLRWq22TJdVjohmVgy7sREHrezIAIr4jEpXDdI03ZGmqexcbTQabxuNxpc0TYfTNP2YxcdGR0e3dW0QEcci4kVEPI2IqdV4kiTvI+JARCxGxIUkSd6tKeK/2C+l7dZWE4J7LwAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/information.png" Type="base64">
+<INLINE>
+iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAKcSURBVDjLpZPLa9RXHMU/d0ysZEwmMQqZiTaP0agoaKGJUiwIxU0hUjtUQaIuXHSVbRVc+R8ICj5WvrCldJquhVqalIbOohuZxjDVxDSP0RgzyST9zdzvvffrQkh8tBs9yy9fPhw45xhV5X1U8+Yhc3U0LcEdVxdOVq20OA0ooQjhpnfhzuDZTx6++m9edfDFlZGMtXKxI6HJnrZGGtauAWAhcgwVnnB/enkGo/25859l3wIcvpzP2EhuHNpWF9/dWs/UnKW4EOGDkqhbQyqxjsKzMgM/P1ymhlO5C4ezK4DeS/c7RdzQoa3x1PaWenJjJZwT9rQ1gSp/js1jYoZdyfX8M1/mp7uFaTR8mrt29FEMQILr62jQ1I5kA8OF59jIItVA78dJertTiBNs1ZKfLNG+MUHX1oaURtIHEAOw3p/Y197MWHEJEUGCxwfHj8MTZIcnsGKxzrIURYzPLnJgbxvG2hMrKdjItjbV11CYKeG8R7ygIdB3sBMFhkem0RAAQ3Fuka7UZtRHrasOqhYNilOwrkrwnhCU/ON5/q04vHV48ThxOCuoAbxnBQB+am65QnO8FqMxNCjBe14mpHhxBBGCWBLxD3iyWMaYMLUKsO7WYH6Stk1xCAGccmR/Ozs/bKJuXS39R/YgIjgROloSDA39Deit1SZWotsjD8pfp5ONqZ6uTfyWn+T7X0f59t5fqDhUA4ry0fYtjJcWeZQvTBu4/VqRuk9/l9Fy5cbnX+6Od26s58HjWWaflwkusKGxjm1bmhkvLXHvh1+WMbWncgPfZN+qcvex6xnUXkzvSiYP7EvTvH4toDxdqDD4+ygT+cKMMbH+3MCZ7H9uAaDnqytpVX8cDScJlRY0YIwpAjcNcuePgXP/P6Z30QuoP4J7WbYhuQAAAABJRU5ErkJggg==
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/README.md">
+<INLINE>
+**&name; Plugin**
+
+This Plugin provides pyload support for unRAID
+</INLINE>
+</FILE>
+
+<FILE Name="/usr/local/emhttp/plugins/&name;/&name;.page">
+<INLINE>
+<![CDATA[
+Menu="NetworkServices"
+Title="pyload"
+Icon="pyload.png"
+---
+<?PHP
+$pyload_cfg = parse_ini_file( "/boot/config/plugins/pyload/pyload.cfg");
+$pyload_installed = is_dir( $pyload_cfg['INSTALLDIR'] ) ? "yes" : "no";
+
+//Get local plugin file version
+$pyload_localplg = shell_exec('grep "<\!ENTITY version" /boot/config/plugins/pyload.plg | cut -d\" -f2');
+
+//Get remote plugin file version.  Uses Limetech plugin php to perform this function
+$pyload_remoteplg = shell_exec("/usr/local/sbin/plugin check pyload.plg");
+
+$pyload_localapp = shell_exec("/etc/rc.d/rc.pyload getver local"); 
+$pyload_remoteapp = shell_exec("/etc/rc.d/rc.pyload getver remote");
+if ($pyload_installed=="yes") {
+  $pyload_running = file_exists( "/var/run/pyload/pyload.pid" ) ? "yes" : "no";
+  $pyload_datacheck = shell_exec ( "/etc/rc.d/rc.pyload datacheck" );
+}
+$controls_exist = "false";
+$updates_exist = "false";
+
+?>
+
+<html>
+<head></head>
+<body>
+ 
+<div style="width: 49%; float:left; border: 0px solid black;"> 
+  <div id="title">
+    <span class="left">Status:&nbsp;<img src='/plugins/pyload/device_status.png'>
+      <?if ($pyload_installed=="yes"):?>
+        <?if ($pyload_running=="yes"):?>
+          <span class="green"><a href="http://<?=$var['NAME'];?>:<?=$pyload_cfg['INSTALL_PORT'];?>" style="color: green; text-decoration:none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" title="Click here to open pyLoad web page.&#13;Default Login:&#13;UserID: admin&#13;Passwd: admin" target="_blank"><span class="green"><b>pyLoad is RUNNING on port <?=$pyload_cfg['INSTALL_PORT'];?></b></span></a></span>
+        <?else:?>
+          <span class="red"><b>NOT RUNNING</b></span>
+        <?endif;?>
+      <?else:?>
+        <span class="red"><b>NOT INSTALLED</b></span>
+      <?endif;?>
+    </span>
+  </div>  
+  
+  <?if ($pyload_installed=="yes"): ?>
+    <div style="border: 0px solid black;">
+      <span class="left">
+        <?=$pyload_datacheck?>
+	  </span>
+    </div>  
+  <?endif;?>   
+       
+  <br>
+   
+  <div style="border: 0px solid black;">
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td colspan="2" style="width:300px">Version Information</td>
+      </tr>
+      <tr style="font-weight:bold; background:#FFFFFF;">
+        <td>pyLoad Application</td>
+        <td>
+          <?if ($pyload_installed=="yes"):?>
+            <?if ($pyload_localapp != "Unknown"):?>
+              <span class="green-text">v<?=$pyload_localapp?></span>
+            <?else:?>
+              <span class="red-text">UNKNOWN</span>
+            <?endif;?>
+          <?else:?>
+            <span class="red-text">Not Installed</span>
+          <?endif;?>
+        </td>
+      </tr>
+      <tr style="font-weight:bold; background:#FFFFFF;">
+        <td>pyLoad Plugin</td>
+        <td>
+          <?if ($pyload_localplg != "Unknown"):?>
+              <span class="green-text"><?=$pyload_localplg?></span>
+          <?else:?>
+            <span class="red-text">UNKNOWN</span>
+          <?endif;?>
+        </td>
+      </tr>
+    </table>
+  </div> 
+
+  <br></br>
+  
+  <div>
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td colspan="2">Control</td>
+      </tr>    
+    <?if ($pyload_installed=="yes"):?>
+      <?if ($pyload_running=="yes"):?>
+        <tr>
+        <td width="30%">
+          <form name="pyload_stop" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.pyload stop">  
+            <input type="submit" name="runCmd" value="Stop">
+          </form>      
+        </td>
+        <td>Stop pyLoad Daemon</td>
+        </tr>
+        <tr>
+        <td width="30%">
+          <form name="pyload_restart" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.pyload restart">    
+            <input type="submit" name="runCmd" value="Restart">
+          </form>  
+        </td>
+        <td>Restart pyLoad Daemon</td>
+        </tr>
+        <?$controls_exist = "true"?>
+      <?else:?>
+        <tr>
+        <td width="30%">
+          <form name="pyload_start" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.pyload buttonstart">        
+            <input type="submit" name="runCmd" value="Start">
+          </form>
+        </td>
+        <td>Start pyLoad Daemon</td>
+        </tr>
+        <?$controls_exist = "true"?>
+      <?endif;?>
+    <?else:?>
+      <tr>
+      <td width="30%">
+          <form name="pyload_install" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.pyload install">    
+          <input type="submit" name="runCmd" value="Install">
+        </form>
+      </td>
+      <td>Install pyLoad Application</td>
+      </tr>
+      <?$controls_exist = "true"?>
+    <?endif;?>
+      
+    <?if ($controls_exist=="false"):?>
+      <tr>
+        <td colspan="2" align="center">No Control Actions available</td>
+      </tr>
+    <?endif;?>
+    </table>
+  </div>  
+  <br></br> 
+  <div style="border: 0px solid black;">
+    <table>
+      <tr style="font-weight:bold; color:#333333; background:#F0F0F0; text-shadow:0 1px 1px #FFFFFF;">
+        <td colspan="2">Updates</td>
+      </tr>
+
+      <?if (($pyload_remoteapp != $pyload_localapp) && ($pyload_localapp != "Unknown") && ($pyload_remoteapp != "Unknown")): ?>
+        <tr>
+          <td width="30%">
+          <form name="pyload_updateapp" method="POST" action="/update.htm" target="progressFrame">
+            <input type="hidden" name="cmd" value="/etc/rc.d/rc.pyload updateapp">
+            <input type="submit" name="runCmd" value="Update pyLoad">
+          </form>
+          </td>
+          <td><span class="red-text">An update is available to pyLoad</span></td>
+        </tr>
+        <?$updates_exist="true"?>
+      <?endif;?>      
+      
+      
+      <?if ($updates_exist=="false"):?>
+        <tr>
+          <td colspan="2" align="center">No updates available at this time</td>
+        </tr>
+      <?endif;?>
+    </table>
+  </div>
+  <br></br>
+  <br></br>
+</div>
+
+<div style="width: 49%; float:right; border: 0px solid black;">
+  <div id="title">
+    <span class="left">Configuration:&nbsp;<img src='/plugins/pyload/new_config.png'></span>
+  </div>
+    <form name="pyload_settings" method="POST" action="/update.htm" target="progressFrame" onsubmit=" validateForm();">
+    <input type="hidden" name="cmd" value="/etc/rc.d/rc.pyload">
+      <table class="settings">
+        <tr>
+          <td>Enable pyLoad:</td>
+          <td>
+            <select name="arg1" id="arg1" size="1"  onChange="checkRUNNING(this.form);">
+              <?=mk_option($pyload_cfg['SERVICE'], "disable", "No");?>
+              <?=mk_option($pyload_cfg['SERVICE'], "enable", "Yes");?>
+            </select>
+          </td>
+        </tr>
+
+        <tr>
+          <td>Run as user:</td>
+          <td>
+            <select name="arg2" id="arg2" size="1" title="User which will run pyLoad daemon process" onChange="checkRUNNING(this.form);">
+              <?=mk_option($pyload_cfg['RUNAS'], "nobody", "nobody");?>
+              <?=mk_option($pyload_cfg['RUNAS'], "root", "root");?>
+              </select>
+          </td>
+        </tr>
+        <tr>
+          <td>Install Directory:</td>
+          <td><input type="text" name="arg3" id="arg3" title="Directory where pyLoad will be installed, e.g. /mnt/cache/.pyload" value="<?=$pyload_cfg['INSTALLDIR'];?>"></td>
+        </tr>
+        <tr>
+          <td>Create Logs:</td>
+          <td>
+            <select name="arg4" id="arg4" size="1" title="Should pyLoad create log files?" onChange="checkRUNNING(this.form);">
+             <?=mk_option($pyload_cfg['CREATE_LOG'], "False", "No");?>
+             <?=mk_option($pyload_cfg['CREATE_LOG'], "True", "Yes");?>
+             </select>
+          </td>
+        </tr>        
+        <tr>
+          <td>Log File Directory:</td>
+          <td><input type="text" name="arg5" id="arg5" title="Directory where pyLoad will keep logs, e.g. /mnt/cache/.pyload/logs" value="<?=$pyload_cfg['LOG_DIR'];?>"></td>
+        </tr>
+        <tr>
+          <td>Log Count:</td>
+          <td><input type="text" name="arg6" id="arg6" title="Number of logs pyLoad will keep before deleting old ones" value="<?=$pyload_cfg['LOG_COUNT'];?>"></td>
+        </tr>        
+        <tr>
+          <td>Download Directory:</td>
+          <td><input type="text" name="arg7" id="arg7" title="Where downloaded files will be placed" value="<?=$pyload_cfg['DOWNLOAD_DIR'];?>"></td>
+        </tr>
+        <tr>
+          <td>Minimum Free Space:</td>
+          <td><input type="text" name="arg8" id="arg8" title="pyLoad will stop downloading when it reaches this min-free-space (in MB)" value="<?=$pyload_cfg['MIN_FREE_SPACE'];?>"></td>
+        </tr>
+        <tr>
+          <td>Installation Host:</td>
+          <td><input type="text" name="arg9" id="arg9" title="IP Address pyLoad WebGui listens on. e.g. 0.0.0.0" value="<?=$pyload_cfg['INSTALL_HOST'];?>"></td>
+        </tr>
+        <tr>
+          <td>Port:</td>
+          <td><input type="text" name="arg10" id="arg10" title="Port pyLoad WebGui listens on (must be higher than 1024)" value="<?=$pyload_cfg['INSTALL_PORT'];?>"></td>
+        </tr>
+        <tr>
+          <td>Maximum Parallel Downloads:</td>
+          <td><input type="text" name="arg11" id="arg11" title="The number of downloads that should run at the same time.  A high number could effect your internet speed" value="<?=$pyload_cfg['MAX_PARALLEL_DOWNLOAD'];?>"></td>
+        </tr>
+          <td>Limit Download Speed:</td>
+          <td>
+            <select name="arg12" size="1" id="arg12" title="Limit the download speed so as to not affect the remainder of your internet activity" onChange="checkRUNNING(this.form);">
+              <?=mk_option($pyload_cfg['LIMIT_DOWNLOAD_SPEED'], "False", "No");?>
+              <?=mk_option($pyload_cfg['LIMIT_DOWNLOAD_SPEED'], "True", "Yes");?>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td>Download Speed:</td>
+          <td><input type="text" name="arg13" id="arg13" title="Set the download speed maximum, in KB/s. Set to -1 for no limit" value="<?=$pyload_cfg['DOWNLOAD_SPEED'];?>"></td>
+        </tr>   
+        <tr>
+          <td>Maximum Connections per Download:</td>
+          <td><input type="text" name="arg14" id="arg14" title="The maximum number of connections per download" value="<?=$pyload_cfg['MAX_CONNECTIONS_PER_DOWNLOAD'];?>"></td>
+        </tr>            
+        <tr>      
+      </table>
+    <div align="center">
+      <hr size="3" align="center" width="75%" color="grey" style="margin-top:20px;margin-bottom:18px">
+      <input type="submit" name="runCmd" value="Apply"><button type="button" onClick="done();">Done</button>
+    </div>
+  </form>
+  <br />
+</div>
+
+<script type="text/javascript">
+function validateForm()
+{
+  document.getElementById('arg2').disabled = false;
+  document.getElementById('arg3').disabled = false;
+  document.getElementById('arg4').disabled = false;
+  document.getElementById('arg5').disabled = false;
+  document.getElementById('arg6').disabled = false;
+  document.getElementById('arg7').disabled = false;
+  document.getElementById('arg8').disabled = false;
+  document.getElementById('arg9').disabled = false;
+  document.getElementById('arg10').disabled = false;
+  document.getElementById('arg11').disabled = false;
+  document.getElementById('arg12').disabled = false;
+  document.getElementById('arg13').disabled = false;
+  document.getElementById('arg14').disabled = false;
+}
+
+function checkRUNNING(form)
+{
+  if ("<?=$pyload_running;?>" == "yes") {
+    form.arg2.disabled = true;
+    form.arg3.disabled = true;
+    form.arg4.disabled = true;
+    form.arg5.disabled = true;
+    form.arg6.disabled = true;
+    form.arg7.disabled = true;
+    form.arg8.disabled = true;
+    form.arg9.disabled = true;
+    form.arg10.disabled = true;
+    form.arg11.disabled = true;
+    form.arg12.disabled = true;
+    form.arg13.disabled = true;
+    form.arg14.disabled = true;
+  }
+}
+
+checkRUNNING(document.pyload_settings);
+</script>
+
+</body>
+</html>
+]]>
+</INLINE>
+</FILE>
+
+<FILE Name="/etc/rc.d/rc.&name;" Mode="0770">
+<INLINE>
+<![CDATA[
+#!/bin/bash
+# start|stop|restart|enable|disable|install|buttonstart|datacheck|getver
+
+pyload_start()
+{
+  # no-op if not enabled
+  if [ $SERVICE != "enable" ]; then
+    return
+  fi
+
+  # no-op if already running
+  if [ -f /var/run/pyload/pyload.pid ]; then
+    return
+  fi
+
+  # if not installed yet, call install function
+  if [[ ! -f "$INSTALLDIR/pyLoadCore.py" ]]; then
+    pyload_install
+  fi
+
+  echo "Starting pyLoad ..."
+  sleep 2
+  
+  CMDLINE="sudo -u $RUNAS /usr/bin/python $INSTALLDIR/pyLoadCore.py -d --configdir=$INSTALLDIR --pidfile=/var/run/pyload/pyload.pid --daemon > /dev/null 2>&1"
+  nohup $CMDLINE > /dev/null 2>&1 &
+  #echo "$CMDLINE"
+  
+  echo "... OK"
+  sleep 2
+  
+}
+
+pyload_stop()
+{
+  # no-op if already stopped
+  if [ ! -f /var/run/pyload/pyload.pid ]; then
+    return
+  fi
+  
+  echo "Stopping pyLoad ..."
+  sleep 2
+  
+  #kill pyload process
+  /usr/bin/python $INSTALLDIR/pyLoadCli.py kill
+ 
+  echo "... OK"
+  sleep 2
+}
+
+pyload_restart()
+{
+  pyload_stop
+  pyload_start
+}
+
+pyload_buttonstart()
+{
+  CONFIG="/boot/config/plugins/pyload/pyload.cfg"
+  if [ -f $CONFIG ]; then
+    # a less greedy sed.  only replaces the first occurance of disabled with enabled.  ie. will only hit service line which is (usually) always first in cfg
+    sed -i "0,/"disable"/s/"disable"/"enable/"" $CONFIG 2>/dev/null
+    SERVICE=enable
+    pyload_start
+  fi
+}
+
+write_config()
+{
+  echo "SERVICE=\"$SERVICE\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "RUNAS=\"$RUNAS\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "INSTALLDIR=\"$INSTALLDIR\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "CREATE_LOG=\"$CREATE_LOG\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "LOG_DIR=\"$LOG_DIR\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "LOG_COUNT=\"$LOG_COUNT\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "DOWNLOAD_DIR=\"$DOWNLOAD_DIR\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "MIN_FREE_SPACE=\"$MIN_FREE_SPACE\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "INSTALL_HOST=\"$INSTALL_HOST\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "INSTALL_PORT=\"$INSTALL_PORT\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "MAX_PARALLEL_DOWNLOAD=\"$MAX_PARALLEL_DOWNLOAD\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "LIMIT_DOWNLOAD_SPEED=\"$LIMIT_DOWNLOAD_SPEED\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "DOWNLOAD_SPEED=\"$DOWNLOAD_SPEED\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "MAX_CONNECTIONS_PER_DOWNLOAD=\"$MAX_CONNECTIONS_PER_DOWNLOAD\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "INSTALL_URL=\"https://github.com/pyload/pyload.git\"" >> /boot/config/plugins/pyload/pyload.cfg
+  echo "BRANCH=\"stable\"" >> /boot/config/plugins/pyload/pyload.cfg
+}
+
+pyload_change_settings()
+{
+  #nb. when passing params from enable/disable functions, params will take new numbering. ie. $2 in enable will become the first ($1) param here, and so on
+  RUNAS=$1
+  INSTALLDIR=$2
+  CREATE_LOG=$3
+  LOG_DIR=$4
+  LOG_COUNT=$5
+  DOWNLOAD_DIR=$6
+  MIN_FREE_SPACE=$7
+  INSTALL_HOST=$8
+  INSTALL_PORT=$9
+  MAX_PARALLEL_DOWNLOAD=${10}
+  LIMIT_DOWNLOAD_SPEED=${11}
+  DOWNLOAD_SPEED=${12}
+  MAX_CONNECTIONS_PER_DOWNLOAD=${13}  
+}
+
+pyload_enable()
+{
+  SERVICE=$1 #enable
+  pyload_change_settings $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14}
+  write_config
+  pyload_restart
+}
+
+pyload_disable()
+{
+  pyload_stop
+  SERVICE=$1 #disable
+  pyload_change_settings $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14}
+  write_config
+}
+
+pyload_install()
+{
+  echo "Installing pyLoad ..."
+  sleep 2
+  
+  # install from pyLoad GitHub to Install Dir as set in plugin webgui page  
+  echo "Cloning from GitHub [branch:$BRANCH] [URL:$INSTALL_URL] into [$INSTALLDIR] ..."
+  sleep 1
+  git clone -b $BRANCH $INSTALL_URL $INSTALLDIR   # eg. git clone -b stable https://github.com/pyload/pyload.git /mnt/disk1/pyload
+  echo "... OK"
+  sleep 1
+  
+  echo "Configuring pyLoad ..."
+  sleep 1
+  # take template pyload.conf & overwrite with values from webgui. there is a default file in pyload/modules/config called default.conf, but contains tab/space mixture which mangles the sed commands.  use own vers.
+  cp /boot/config/plugins/pyload/pyload.conf $INSTALLDIR/pyload.conf
+
+  # copy files.db (pyload sqlite db) from plugin dir to install dir.  needed as default db contains default userID admin/admin.  would otherwise need pyload running once with -u to create users
+  cp /boot/config/plugins/pyload/files.db $INSTALLDIR/files.db
+  
+  # precompile python files
+  /usr/bin/python -m compileall $INSTALLDIR
+
+  sed -i 's#.*bool file_log : "File Log" =.*#    bool file_log : "File Log" = '"$CREATE_LOG"'#' $INSTALLDIR/pyload.conf
+  sed -i 's#.*folder log_folder : "Folder" =.*#    folder log_folder : "Folder" = '"$LOG_DIR"'#' $INSTALLDIR/pyload.conf
+  sed -i 's#.*int log_count : "Count" =.*#    int log_count : "Count" = '"$LOG_COUNT"'#' $INSTALLDIR/pyload.conf
+  sed -i 's#.*folder download_folder : "Download Folder" =.*#    folder download_folder : "Download Folder" = '"$DOWNLOAD_DIR"'#' $INSTALLDIR/pyload.conf
+  sed -i 's#.*int min_free_space : "Min Free Space (MB)" =.*#    int min_free_space : "Min Free Space (MB)" = '"$MIN_FREE_SPACE"'#' $INSTALLDIR/pyload.conf
+  sed -i 's#.*ip host : "IP" =.*#    ip host : "IP" = '"$INSTALL_HOST"'#' $INSTALLDIR/pyload.conf
+  sed -i 's#.*int max_downloads : "Max Parallel Downloads" =.*#    int max_downloads : "Max Parallel Downloads" = '"$MAX_PARALLEL_DOWNLOAD"'#' $INSTALLDIR/pyload.conf
+  sed -i 's#.*bool limit_speed : "Limit Download Speed" =.*#    bool limit_speed : "Limit Download Speed" = '"$LIMIT_DOWNLOAD_SPEED"'#' $INSTALLDIR/pyload.conf
+  sed -i 's#.*int max_speed : "Max Download Speed in kb/s" =.*#    int max_speed : "Max Download Speed in kb/s" = '"$DOWNLOAD_SPEED"'#' $INSTALLDIR/pyload.conf
+  sed -i 's#.*int chunks : "Max connections for one download" =.*#    int chunks : "Max connections for one download" = '"$MAX_CONNECTIONS_PER_DOWNLOAD"'#' $INSTALLDIR/pyload.conf
+  
+  #the next sed is different as it has to take account of the fact the regex is not unique and occurs three times in the file
+  #there is no way to differentiate between them. the following sed entry looks for the search string and when found, loops
+  #until it finds the next occurance. if found it performs the substitution and then enters a do nothing loop until end of file
+  #note to self: sed is evil
+  sed -i '/    int port : "Port" =.*/{:1 n;/    int port : "Port" =.*/{s#    int port : "Port" =.*#    int port : "Port" = '"$INSTALL_PORT"'#;:2 n;$!b2};b1}' $INSTALLDIR/pyload.conf
+    
+  chown -R nobody:users $INSTALLDIR
+  chmod -R 777 $INSTALLDIR
+  
+  mkdir -p -m 0777 $LOG_DIR
+  chown -R nobody:users $LOG_DIR
+  
+  mkdir -p -m 0777 $DOWNLOAD_DIR
+  chown -R nobody:users $DOWNLOAD_DIR
+  
+  echo "... OK"
+  sleep 2
+}
+
+pyload_datacheck()
+{
+  array=( ramfs proc tempfs sysfs )
+  fs=$( stat -f -c '%T' $INSTALLDIR )
+  if [ "$fs" = "msdos" ]; then
+    echo "<p style="color:red\;"><b>WARNING:</b> Your data is located on your flash drive. This can decrease the life span of your flash device!</p>"
+  else
+    for i in "${array[@]}"
+    do
+      if [ $i = $fs ]; then
+        echo "<p style="color:red\;"><b>WARNING:</b> Your data is not persistent and WILL NOT survive a reboot. Please locate data on persistent storage. eg. cache/array disk</p>"
+        break
+      else
+        echo "<p style="color:green\;">Your data will persist after a reboot</p>"
+        break
+      fi
+    done
+  fi
+}
+
+pyload_updateapp()
+{
+  pyload_stop
+  
+  # pull latest from github 
+  echo "Updating from GitHub [branch:$BRANCH] [URL:$INSTALL_URL] into [$INSTALLDIR] ..."
+  sleep 2
+  
+  cd $INSTALLDIR
+  git pull https://github.com/pyload/pyload.git
+  
+  echo "... OK"
+  sleep 2
+  
+  pyload_start
+}
+
+pyload_getver()
+{
+  case "$1" in
+    'local')
+      VERSION=$(/usr/bin/python $INSTALLDIR/pyLoadCore.py -v | awk '{print $2}')
+	  if [ "$VERSION" == "" ]; then
+        VERSION=Unknown
+	  fi	
+    ;;
+    'remote')
+      VERSION=$(wget --no-check-certificate -q https://raw.github.com/pyload/pyload/stable/pyLoadCore.py -O - | grep -m 1 "CURRENT_VERSION" | cut -d\' -f2)
+      if [ "$VERSION" == "" ]; then
+        VERSION=Unknown
+      fi
+    ;;
+  esac
+  echo -n "$VERSION"
+}
+
+# read our configuration
+source /boot/config/plugins/pyload/pyload.cfg
+
+case "$1" in
+  'start')
+    pyload_start
+  ;;
+  'stop')
+    pyload_stop
+  ;;
+  'restart')
+    pyload_restart
+  ;;
+  'enable')
+    pyload_enable $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14}
+  ;;
+  'disable')
+    pyload_disable $1 $2 $3 $4 $5 $6 $7 $8 $9 ${10} ${11} ${12} ${13} ${14}
+  ;;
+  'install')
+    pyload_install
+  ;;
+  'buttonstart')
+    pyload_buttonstart
+  ;;
+  'datacheck')
+    pyload_datacheck
+  ;;
+  'updateapp')
+    pyload_updateapp
+  ;;
+  'getver')
+    pyload_getver $2
+    ;;
+  *)
+    echo "usage $0 start|stop|restart|enable|disable|install|buttonstart|datacheck|getver <argv0>"
+esac
+]]>
+</INLINE>
+</FILE>
+
+<!-- event handler to start pyload when array online (if dropbox service set to enable) -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/disks_mounted" Mode="0770">
+<INLINE>
+#!/bin/bash
+# include our config vars and check if the service is set to enable.  if so, bring it up
+source /boot/config/plugins/&name;/&name;.cfg
+[[ $SERVICE = "enable" ]] &amp;&amp; /etc/rc.d/rc.&name; start
+</INLINE>
+</FILE>
+
+<!-- event handler -->
+<FILE Name="/usr/local/emhttp/plugins/&name;/event/unmounting_disks" Mode="0770">
+<INLINE>
+#!/bin/bash
+/etc/rc.d/rc.&name; stop
+</INLINE>
+</FILE>
+
+<FILE Mode="0770" Run="/bin/bash">
+<INLINE>
+#!/bin/bash
+if [ "&devplugin;" == "true" ]; then
+  if [ -f /boot/config/plugins/&name;.page ]; then
+    rm -f /usr/local/emhttp/plugins/&name;/&name;.page
+    ln -s /boot/config/plugins/&name;.page /usr/local/emhttp/plugins/&name;/&name;.page
+  else
+    mv /usr/local/emhttp/plugins/&name;/&name;.page /boot/config/plugins/&name;.page
+    ln -s /boot/config/plugins/&name;.page /usr/local/emhttp/plugins/&name;/&name;.page
+  fi
+  if [ -f /boot/config/plugins/rc.&name; ]; then
+    rm -f /etc/rc.d/rc.&name;
+    ln -s /boot/config/plugins/rc.&name; /etc/rc.d/rc.&name;
+  else
+    mv /etc/rc.d/rc.&name; /boot/config/plugins/rc.&name;
+    ln -s /boot/config/plugins/rc.&name; /etc/rc.d/rc.&name;
+  fi
+fi
+</INLINE>
+</FILE>
+
+</PLUGIN>
