@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name       "pyload">
 <!ENTITY author     "overbyrn">
-<!ENTITY version    "2015.04.08">
+<!ENTITY version    "2015.06.07">
 <!ENTITY category   "Network Services">
 <!ENTITY pluginDIR   "/boot/config/plugins/&name;">
 <!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
@@ -25,6 +25,7 @@ This Plugin provides pyLoad support for unRAID.
 Plugin file locations:
  /boot/plugins/pyload.plg                                                      # this file
 
+ /boot/packages/python-2.7.5-x86_64-1.txz                                      # python 2.7.5
  /usr/local/emhttp/plugins/pyload/pyload.page                                  # webGui page code (settings)
 
  /usr/local/emhttp/plugins/pyload/pyload.png                                   # plugin icon file
@@ -43,6 +44,10 @@ Plugin file locations:
  /var/run/pyload/pyload.pid                                                    # run-time pid file
 
 -->
+
+<FILE Name="/boot/packages/python-2.7.5-x86_64-1.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/python-2.7.5-x86_64-1.txz</URL>
+</FILE>
 
 <FILE Name="/boot/packages/git-1.8.4-x86_64-1.txz" Run="upgradepkg --install-new">
 <URL>-q --no-check-certificate &packageURL;/git-1.8.4-x86_64-1.txz</URL>

@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name       "dropbox">
 <!ENTITY author     "overbyrn">
-<!ENTITY version    "2015.03.25">
+<!ENTITY version    "2015.06.07">
 <!ENTITY category   "Network Services">
 <!ENTITY pluginDIR   "/boot/config/plugins/&name;">
 <!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
@@ -22,23 +22,28 @@ Copyright 2015, Rich Manton (overbyrn)
 This Plugin installs and provides Dropbox support for unRAID.
 
 Plugin file locations:
- /boot/plugins/dropbox.plg                                          # this file
+ /boot/plugins/dropbox.plg                                              # this file
 
- /boot/config/plugins/dropbox/dropbox-[ver].tar.gz                  # dropbox application
- /boot/config/plugins/dropbox/dropbox.py                            # dropbox CLI control script
- /boot/config/plugins/dropbox/dropbox.cfg                           # non-volatile configuration
+ /boot/packages/python-2.7.5-x86_64-1.txz                               # python 2.7.5 
+ /boot/config/plugins/dropbox/dropbox-[ver].tar.gz                      # dropbox application
+ /boot/config/plugins/dropbox/dropbox.py                                # dropbox CLI control script
+ /boot/config/plugins/dropbox/dropbox.cfg                               # non-volatile configuration
  
- /etc/rc.d/rc.dropbox                                               # plugin control script
+ /etc/rc.d/rc.dropbox                                                   # plugin control script
 
- /usr/local/emhttp/plugins/dropbox/dropbox.page                     # webGui page code (settings)
- /usr/local/emhttp/plugins/dropbox/dropbox.png                      # plugin icon file
- /usr/local/emhttp/plugins/dropbox/device_status.png                # plugin webgui image file
- /usr/local/emhttp/plugins/dropbox/new_config.png                   # plugin webgui image file
- /usr/local/emhttp/plugins/dropbox/information.png                  # plugin webgui image file
+ /usr/local/emhttp/plugins/dropbox/dropbox.page                         # webGui page code (settings)
+ /usr/local/emhttp/plugins/dropbox/dropbox.png                          # plugin icon file
+ /usr/local/emhttp/plugins/dropbox/device_status.png                    # plugin webgui image file
+ /usr/local/emhttp/plugins/dropbox/new_config.png                       # plugin webgui image file
+ /usr/local/emhttp/plugins/dropbox/information.png                      # plugin webgui image file
 
- /var/run/dropbox/dropbox.pid                                       # run-time pid file
+ /var/run/dropbox/dropbox.pid                                           # run-time pid file
  
 -->
+
+<FILE Name="/boot/packages/python-2.7.5-x86_64-1.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/python-2.7.5-x86_64-1.txz</URL>
+</FILE>
 
 <FILE Name="&pluginDIR;/dropbox.py" >
 <URL>-q --no-check-certificate &packageURL;/dropbox.py</URL>

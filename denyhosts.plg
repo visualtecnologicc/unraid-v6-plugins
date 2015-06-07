@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name       "denyhosts">
 <!ENTITY author     "overbyrn">
-<!ENTITY version    "2015.02.26">
+<!ENTITY version    "2015.06.07">
 <!ENTITY category   "Network Services">
 <!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
 <!ENTITY packageURL "https://github.com/overbyrn/unraid-v6-plugins/releases/download/&name;">
@@ -23,7 +23,8 @@ The plugin installs DenyHosts, a log-based intrusion prevention security tool fo
 
 Plugin file locations:
  /boot/plugins/denyhosts.plg                                            # this file
- 
+
+ /boot/packages/python-2.7.5-x86_64-1.txz                               # python 2.7.5 
  /boot/config/plugins/denyhosts/DenyHosts-2.6.tar.gz                    # denyhosts source
  
  /boot/config/plugins/denyhosts/denyhosts.cfg                           # non-volatile configuration
@@ -44,6 +45,10 @@ Plugin file locations:
  /usr/local/denyhosts/data                                              # denyhosts work directory (default. should be relocated to non-volatile storage via webgui)
  
 -->
+
+<FILE Name="/boot/packages/python-2.7.5-x86_64-1.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/python-2.7.5-x86_64-1.txz</URL>
+</FILE>
 
 <FILE Name="/boot/config/plugins/&name;/DenyHosts-2.6.tar.gz">
 <URL>&packageURL;/DenyHosts-2.6.tar.gz</URL>

@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name       "beets">
 <!ENTITY author     "overbyrn">
-<!ENTITY version    "2014.09.09">
+<!ENTITY version    "2015.06.07">
 <!ENTITY category   "Network Services">
 <!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
 <!ENTITY packageURL "https://github.com/overbyrn/unraid-v6-plugins/releases/download/&name;">
@@ -25,6 +25,7 @@ Plugin file locations:
  /boot/config/plugins/beets.plg                                         # this file
  /tmp/plugin-install                                                    # installation script
 
+ /boot/packages/python-2.7.5-x86_64-1.txz                               # python 2.7.5
  /boot/packages/pysetuptools-3.6-x86_64-1ponce.txz                      # python setuptools package
  /boot/packages/python-pip-1.2.1-x86_64-1fg.txz                         # python pip installer package
  /boot/packages/libyaml-0.1.6-x86_64-1_slack14.1.txz                    # python libyaml package
@@ -45,6 +46,10 @@ Plugin file locations:
  /usr/local/emhttp/plugins/beets/information.png                        # plugin webgui image file
 
 -->
+
+<FILE Name="/boot/packages/python-2.7.5-x86_64-1.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/python-2.7.5-x86_64-1.txz</URL>
+</FILE>
 
 <FILE Name="/boot/packages/libyaml-0.1.6-x86_64-1_slack14.1.txz" Run="upgradepkg --install-new">
 <URL>&packageURL;/libyaml-0.1.6-x86_64-1_slack14.1.txz</URL>

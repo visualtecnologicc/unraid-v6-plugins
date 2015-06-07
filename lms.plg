@@ -14,7 +14,8 @@
 <PLUGIN  name="&name;"
          author="&author;"
          version="&version;"
-         category="&category;">
+         category="&category;"
+         pluginURL="&pluginURL;">
 
 <!--
 Copyright 2013, Rich Manton (overbyrn)
@@ -23,11 +24,12 @@ This Plugin provides Logitech Media Server support for unRAID v6
 
 Plugin file locations:
  /boot/plugins/lms.plg                                                          # this file
- 
+
+ /boot/packages/python-2.7.5-x86_64-1.txz                                       # python 2.7.5 
  /boot/config/plugins/lms/lms-{ver}-{rev}.tgz                                   # Logitech Media Server Application
  
  /usr/local/emhttp/plugins/lms/lms.page                                         # webGui page code (settings)
-                                                                       
+
  /usr/local/emhttp/plugins/lms/lms.png                                          # plugin icon file
  /usr/local/emhttp/plugins/lms/device_status.png                                # plugin webgui image file
  /usr/local/emhttp/plugins/lms/new_config.png                                   # plugin webgui image file
@@ -44,6 +46,10 @@ Plugin file locations:
  /var/run/lms/lms.pid                                                           # run-time pid file
 
 -->
+
+<FILE Name="/boot/packages/python-2.7.5-x86_64-1.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/python-2.7.5-x86_64-1.txz</URL>
+</FILE>
 
 <FILE Name="/boot/config/plugins/&name;/&name;.cfg">
 <INLINE>
