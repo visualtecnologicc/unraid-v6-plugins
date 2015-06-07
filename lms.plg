@@ -3,7 +3,7 @@
 <!DOCTYPE PLUGIN [
 <!ENTITY name       "lms">
 <!ENTITY author     "overbyrn">
-<!ENTITY version    "2015.04.11">
+<!ENTITY version    "2015.06.07">
 <!ENTITY category   "Network Services">
 <!ENTITY pluginDIR   "/boot/config/plugins/&name;">
 <!ENTITY pluginURL  "https://raw.github.com/overbyrn/unraid-v6-plugins/master/&name;.plg">
@@ -25,7 +25,7 @@ This Plugin provides Logitech Media Server support for unRAID v6
 Plugin file locations:
  /boot/plugins/lms.plg                                                          # this file
 
- /boot/packages/python-2.7.5-x86_64-1.txz                                       # python 2.7.5 
+ /boot/packages/perl-5.18.1-x86_64-1.txz                                        # perl 5.18
  /boot/config/plugins/lms/lms-{ver}-{rev}.tgz                                   # Logitech Media Server Application
  
  /usr/local/emhttp/plugins/lms/lms.page                                         # webGui page code (settings)
@@ -47,8 +47,8 @@ Plugin file locations:
 
 -->
 
-<FILE Name="/boot/packages/python-2.7.5-x86_64-1.txz" Run="upgradepkg --install-new">
-<URL>-q --no-check-certificate &packageURL;/python-2.7.5-x86_64-1.txz</URL>
+<FILE Name="/boot/packages/perl-5.18.1-x86_64-1.txz" Run="upgradepkg --install-new">
+<URL>-q --no-check-certificate &packageURL;/perl-5.18.1-x86_64-1.txz</URL>
 </FILE>
 
 <FILE Name="/boot/config/plugins/&name;/&name;.cfg">
